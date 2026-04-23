@@ -7,9 +7,9 @@ On-device OCR for Flutter. One Dart API, three backends:
 - **Web** binds [`@paddleocr/paddleocr-js`](https://www.npmjs.com/package/@paddleocr/paddleocr-js) (ONNX Runtime Web + OpenCV.js) through `dart:js_interop`
 
 <p align="center">
-  <img src="docs/screenshots/android.png" width="280" alt="Android sample running PP-OCRv2" />
+  <img src="doc/screenshots/android.png" width="280" alt="Android sample running PP-OCRv2" />
   &nbsp;
-  <img src="docs/screenshots/web_result.png" width="280" alt="Web sample running PP-OCRv5 via paddleocr-js" />
+  <img src="doc/screenshots/web_result.png" width="280" alt="Web sample running PP-OCRv5 via paddleocr-js" />
 </p>
 
 <sub>Left: Android emulator, PP-OCRv2 via Paddle Lite. Right: Chrome, PP-OCRv5 via paddleocr-js. iOS device screenshot pending — Paddle Lite v2.10 ships an arm64-device-only `.a` so it can't run in the simulator.</sub>
@@ -164,7 +164,7 @@ Most users won't need to. If you do:
 
 ## Roadmap
 
-- **v0.3** — switch the native backends from Paddle Lite to ONNX Runtime Mobile so PP-OCRv5 works on Android/iOS and the iOS simulator gap goes away. See [`docs/migration-v0.3-onnx.md`](docs/migration-v0.3-onnx.md).
+- **v0.3** — switch the native backends from Paddle Lite to ONNX Runtime Mobile so PP-OCRv5 works on Android/iOS and the iOS simulator gap goes away. See [`doc/migration-v0.3-onnx.md`](doc/migration-v0.3-onnx.md).
 
 ## License
 
