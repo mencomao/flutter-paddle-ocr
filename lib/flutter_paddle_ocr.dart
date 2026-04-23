@@ -1,132 +1,80 @@
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
 
-export 'src/models.dart';
-
+import 'flutter_paddle_ocr_platform_interface.dart';
+import 'src/model_source.dart';
 import 'src/models.dart';
 
-const _channel = MethodChannel('flutter_paddle_ocr');
+export 'src/model_source.dart';
+export 'src/models.dart';
 
-/// On-device OCR engine backed by PaddleOCR + Paddle Lite.
+/// On-device OCR engine backed by PaddleOCR + Paddle Lite (Android/iOS) or
+/// paddleocr-js (web).
 ///
-/// Create one instance per set of models you load, then call [recognize]
-/// repeatedly. Call [dispose] when done to release native memory.
+/// Create one instance per set of models, then call [recognize] repeatedly.
+/// Call [dispose] when done to release native memory.
 class PaddleOcr {
-  PaddleOcr._(this._instanceId);
+  PaddleOcr._(this._handle) {
+    _finalizer.attach(this, _handle, detach: this);
+  }
 
-  final int _instanceId;
+  final Object _handle;
   bool _disposed = false;
 
-  /// Loads the detection/recognition (and optional classification) models.
+  // Safety net: if the caller forgets to await dispose(), release the native
+  // engine when the Dart object gets GC'd. Disposing explicitly is still
+  // strongly recommended — a GC pass is not guaranteed.
+  static final Finalizer<Object> _finalizer =
+      Finalizer<Object>((handle) => FlutterPaddleOcrPlatform.instance.dispose(handle));
+
+  /// Loads the models described by [source] and returns a ready-to-use engine.
   ///
-  /// Paths must be absolute on-device file paths — typically obtained by
-  /// copying bundled assets into the app's documents directory, or by
-  /// downloading models at first launch.
-  ///
-  /// [labelPath] is the character dictionary (`ppocr_keys_v1.txt` /
-  /// `ic15_dict.txt` / etc. — shipped alongside PP-OCR models).
+  /// See [ModelSource] for the two variants:
+  ///  * [ModelSource.filePaths] — Android/iOS; supply .nb files + dictionary
+  ///  * [ModelSource.bundled]  — Web; paddleocr-js fetches .onnx by lang/version
   static Future<PaddleOcr> create({
-    required String detModelPath,
-    required String recModelPath,
-    required String labelPath,
-    String? clsModelPath,
+    required ModelSource source,
     int cpuThreadNum = 4,
     CpuPower cpuPower = CpuPower.high,
     bool useOpenCL = false,
   }) async {
-    final id = await _channel.invokeMethod<int>('create', {
-      'detModelPath': detModelPath,
-      'recModelPath': recModelPath,
-      'clsModelPath': clsModelPath ?? '',
-      'labelPath': labelPath,
-      'cpuThreadNum': cpuThreadNum,
-      'cpuPower': cpuPower.value,
-      'useOpenCL': useOpenCL,
-    });
-    return PaddleOcr._(id!);
+    final handle = await FlutterPaddleOcrPlatform.instance.create(
+      source: source,
+      cpuThreadNum: cpuThreadNum,
+      cpuPower: cpuPower,
+      useOpenCL: useOpenCL,
+    );
+    return PaddleOcr._(handle);
   }
 
-  /// Runs OCR on the given image.
-  ///
-  /// [imageBytes] accepts any format the host platform can decode (PNG, JPEG,
-  /// BMP, WebP, HEIF on newer Android, etc.).
+  /// Runs OCR on [imageBytes], which must be in a format the host platform can
+  /// decode (PNG, JPEG, BMP, WebP, and on modern Android, HEIF).
   Future<List<OcrResult>> recognize(
     Uint8List imageBytes, {
     int maxSideLen = 960,
     bool runDetection = true,
     bool runClassification = false,
     bool runRecognition = true,
-  }) async {
+  }) {
     _checkNotDisposed();
-    final raw = await _channel.invokeListMethod<dynamic>('recognize', {
-      'instanceId': _instanceId,
-      'imageBytes': imageBytes,
-      'maxSideLen': maxSideLen,
-      'runDetection': runDetection,
-      'runClassification': runClassification,
-      'runRecognition': runRecognition,
-    });
-    return (raw ?? const [])
-        .cast<Map<dynamic, dynamic>>()
-        .map(OcrResult.fromMap)
-        .toList(growable: false);
+    return FlutterPaddleOcrPlatform.instance.recognize(
+      _handle,
+      imageBytes,
+      maxSideLen: maxSideLen,
+      runDetection: runDetection,
+      runClassification: runClassification,
+      runRecognition: runRecognition,
+    );
   }
 
   /// Releases native resources. Safe to call more than once.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await _channel.invokeMethod<void>('dispose', {'instanceId': _instanceId});
+    _finalizer.detach(this);
+    await FlutterPaddleOcrPlatform.instance.dispose(_handle);
   }
 
   void _checkNotDisposed() {
-    if (_disposed) {
-      throw StateError('PaddleOcr instance has been disposed');
-    }
+    if (_disposed) throw StateError('PaddleOcr instance has been disposed');
   }
-}
-
-/// Shape of one recognized text region.
-class OcrResult {
-  const OcrResult({
-    required this.text,
-    required this.confidence,
-    required this.points,
-    this.isUpsideDown,
-    this.angleConfidence,
-  });
-
-  /// Recognized string.
-  final String text;
-
-  /// Recognition confidence in `[0, 1]`.
-  final double confidence;
-
-  /// Polygon (usually 4 points) bounding the text in source-image pixels.
-  final List<Offset> points;
-
-  /// `true` if the text was detected as upside-down (180°). Null when angle
-  /// classification was not run.
-  final bool? isUpsideDown;
-
-  /// Confidence of the angle classification, if run.
-  final double? angleConfidence;
-
-  factory OcrResult.fromMap(Map<dynamic, dynamic> map) {
-    final rawPoints = (map['points'] as List?) ?? const [];
-    return OcrResult(
-      text: map['text'] as String? ?? '',
-      confidence: (map['confidence'] as num?)?.toDouble() ?? 0,
-      points: rawPoints
-          .cast<List<dynamic>>()
-          .map((p) => Offset((p[0] as num).toDouble(), (p[1] as num).toDouble()))
-          .toList(growable: false),
-      isUpsideDown: map['isUpsideDown'] as bool?,
-      angleConfidence: (map['angleConfidence'] as num?)?.toDouble(),
-    );
-  }
-
-  @override
-  String toString() =>
-      'OcrResult("$text", confidence: ${confidence.toStringAsFixed(3)}, '
-      'points: $points)';
 }

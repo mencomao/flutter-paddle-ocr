@@ -1,6 +1,6 @@
 name: flutter_paddle_ocr
-description: "On-device OCR for Flutter, powered by PaddleOCR + Paddle Lite. Supports PP-OCRv2/v3 detection, angle classification, and recognition."
-version: 0.0.1
+description: "On-device OCR for Flutter, powered by PaddleOCR + Paddle Lite (Android/iOS) and paddleocr-js (web)."
+version: 0.0.2
 homepage: https://github.com/phanbaohuy96/flutter-paddle-ocr
 
 environment:
@@ -10,7 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   plugin_platform_interface: ^2.0.2
+  web: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +28,6 @@ flutter:
         pluginClass: FlutterPaddleOcrPlugin
       ios:
         pluginClass: FlutterPaddleOcrPlugin
+      web:
+        pluginClass: FlutterPaddleOcrWeb
+        fileName: flutter_paddle_ocr_web.dart
