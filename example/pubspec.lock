@@ -163,13 +163,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_paddle_ocr:
+  flutter_paddleorc:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.0.2"
+    version: "0.0.1"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:

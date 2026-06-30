@@ -37,6 +37,5 @@ Icon?
 /Flutter/ephemeral/
 /Flutter/flutter_export_environment.sh
 
-# Fetched by ios/flutter_paddle_ocr.podspec#prepare_command on `pod install` —
-# Paddle Lite iOS (~15 MB) + OpenCV iOS fat framework (~215 MB).
+# Fetched by ios/flutter_paddleorc.podspec#prepare_command on `pod install`.
 /Frameworks/

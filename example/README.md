@@ -1,6 +1,6 @@
-# flutter_paddle_ocr_example
+# flutter_paddleorc_example
 
-Demonstrates how to use the flutter_paddle_ocr plugin.
+Demonstrates how to use the flutter_paddleorc plugin.
 
 ## Getting Started
 

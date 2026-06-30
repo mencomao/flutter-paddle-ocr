@@ -1,4 +1,4 @@
-# flutter_paddle_ocr
+# flutter_paddleorc
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-plugin-02569B.svg)](https://flutter.dev)
@@ -59,14 +59,14 @@ work by path replacement alone.
 Use the package from pub.dev when published:
 
 ```sh
-flutter pub add flutter_paddle_ocr
+flutter pub add flutter_paddleorc
 ```
 
 Or depend on a local checkout:
 
 ```yaml
 dependencies:
-  flutter_paddle_ocr:
+  flutter_paddleorc:
     path: ../flutter-paddle-ocr
 ```
 
@@ -76,7 +76,7 @@ dependencies:
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_paddle_ocr/flutter_paddle_ocr.dart';
+import 'package:flutter_paddleorc/flutter_paddleorc.dart';
 
 Future<List<OcrResult>> recognizeImage(Uint8List imageBytes) async {
   final source = kIsWeb

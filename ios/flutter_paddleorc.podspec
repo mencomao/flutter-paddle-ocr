@@ -1,15 +1,15 @@
 Pod::Spec.new do |s|
-  s.name             = 'flutter_paddle_ocr'
-  s.version          = '0.0.2'
-  s.summary          = 'On-device OCR for Flutter, powered by PaddleOCR + ONNX Runtime.'
+  s.name             = 'flutter_paddleorc'
+  s.version          = '0.0.1'
+  s.summary          = 'On-device OCR for Flutter, powered by PaddleOCR-compatible PP-OCR models and ONNX Runtime.'
   s.description      = <<-DESC
-On-device OCR for Flutter. Wraps a PaddleOCR iOS ppocr pipeline
-(detection -> optional angle classification -> CRNN recognition) behind a
-Swift MethodChannel handler.
+On-device OCR for Flutter. Wraps a PaddleOCR-style mobile OCR pipeline
+(detection -> optional angle classification -> recognition) behind a
+Flutter MethodChannel handler.
                        DESC
-  s.homepage         = 'https://github.com/phanbaohuy96/flutter-paddle-ocr'
+  s.homepage         = 'https://github.com/mencomao/flutter-paddle-ocr'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Huy Phan' => 'baohuy.phan1996@gmail.com' }
+  s.author           = { 'Mencomao' => 'opensource@mencomao.com' }
   s.source           = { :path => '.' }
 
   s.source_files     = 'Classes/**/*.{h,hpp,m,mm,cpp}', 'Classes/**/*.swift'

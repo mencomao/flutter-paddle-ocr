@@ -1,6 +1,6 @@
 PODS:
   - Flutter (1.0.0)
-  - flutter_paddle_ocr (0.0.2):
+  - flutter_paddleorc (0.0.1):
     - Flutter
     - onnxruntime-c (~> 1.20.0)
   - image_picker_ios (0.0.1):
@@ -11,7 +11,7 @@ PODS:
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
-  - flutter_paddle_ocr (from `.symlinks/plugins/flutter_paddle_ocr/ios`)
+  - flutter_paddleorc (from `.symlinks/plugins/flutter_paddleorc/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
 
@@ -22,8 +22,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
-  flutter_paddle_ocr:
-    :path: ".symlinks/plugins/flutter_paddle_ocr/ios"
+  flutter_paddleorc:
+    :path: ".symlinks/plugins/flutter_paddleorc/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   integration_test:
@@ -31,7 +31,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_paddle_ocr: 3aebc61a0645bc88efe3eeefbb17702985ebb8d2
+  flutter_paddleorc: 6c1bde3d06fa5795cdd52f004091dd8164066b30
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   onnxruntime-c: 07cfff40dda7e1c54a4350bb2ad226c63150fce3

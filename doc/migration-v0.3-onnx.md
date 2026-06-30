@@ -1,6 +1,6 @@
 # v0.3 migration plan — switch native backends to ONNX Runtime Mobile
 
-**Status:** TODO. Filed because PaddleOCR 3.5 (PP-OCRv5) has no published mobile `.nb` files, the Paddle Lite mobile demos are frozen at v2.10 (Feb 2022), and ONNX Runtime Mobile would unlock both PP-OCRv5 on phones and the iOS simulator that Paddle Lite's arm64-device-only `.a` blocks today.
+**Status:** implemented for Android and iOS native inference. The plugin now uses ONNX Runtime Mobile with PP-OCRv5 mobile `.onnx` det/rec models. Remaining follow-up: replace the iOS OpenCV framework so Apple Silicon iOS 26+ simulators do not need the arm64-simulator exclusion.
 
 ## Why
 
@@ -15,8 +15,8 @@ Same Dart public API. `ModelSource.filePaths` keeps working; the files are now `
 | Layer | Today | After v0.3 |
 | --- | --- | --- |
 | Android engine | Paddle Lite v2.10 `libpaddle_light_api_shared.so` | `com.microsoft.onnxruntime:onnxruntime-android` (gradle dep) |
-| iOS engine | Paddle Lite v2.10 `libpaddle_api_light_bundled.a` (arm64-device only) | `onnxruntime-c` CocoaPod (XCFramework, sim + device) |
-| Models | PP-OCRv2/v3 slim `.nb` from PaddleOCR's bcebos bucket | PP-OCRv5 `.onnx` from `paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/` |
+| iOS engine | Paddle Lite v2.10 `libpaddle_api_light_bundled.a` (arm64-device only) | `onnxruntime-c` CocoaPod |
+| Models | PP-OCRv2/v3 slim `.nb` from PaddleOCR's bcebos bucket | PP-OCRv5 mobile `.onnx` from `paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/` |
 | Pre/postprocessing C++ | `ocr_db_post_process`, `ocr_crnn_process`, `ocr_clipper`, perspective-warp helpers | **Reused as-is** — they're plain OpenCV + vector math, engine-agnostic |
 | JNI / Obj-C++ wrappers | Talk to `paddle::lite_api::MobileConfig` | Talk to `Ort::Session` |
 | Web backend | paddleocr-js (no change) | paddleocr-js (no change) |
@@ -25,15 +25,15 @@ Same Dart public API. `ModelSource.filePaths` keeps working; the files are now `
 ## Critical files to touch
 
 **Android**
-- `android/build.gradle` — drop the `downloadAndExtractArchives` task for Paddle Lite + OpenCV; add `implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'` (or current). Keep OpenCV download (still needed for pre/post).
-- `android/src/main/cpp/native.cpp` + `ocr_ppredictor.{cpp,h}` + `ppredictor.{cpp,h}` + `predictor_input.{cpp,h}` + `predictor_output.{cpp,h}` — replace Paddle Lite calls with ORT C/C++ calls. The other cpp files (`ocr_db_post_process`, `ocr_crnn_process`, `ocr_cls_process`, `ocr_clipper`, `preprocess`) stay verbatim.
-- `android/src/main/cpp/CMakeLists.txt` — drop `paddle_light_api_shared` import; link `libonnxruntime.so` from the AAR.
+- `android/build.gradle` — dropped the Paddle Lite archive download; added `onnxruntime-android` and AAR extraction for C++ headers/libs. OpenCV download remains for pre/post.
+- `android/src/main/cpp/native.cpp` + `ocr_ppredictor.{cpp,h}` + `ppredictor.{cpp,h}` + `predictor_input.{cpp,h}` + `predictor_output.{cpp,h}` — Paddle Lite calls replaced with ORT C++ session calls.
+- `android/src/main/cpp/CMakeLists.txt` — dropped `paddle_light_api_shared`; links `libonnxruntime.so` from the extracted AAR.
 - `android/src/main/java/com/baidu/paddle/lite/demo/ocr/OCRPredictorNative.java` — keep the JNI surface shape (init/forward/release) so Kotlin doesn't change; reimplement the C++ side.
 
 **iOS**
-- `ios/flutter_paddle_ocr.podspec` — drop the `prepare_command` Paddle Lite + OpenCV downloads; add `s.dependency 'onnxruntime-c'`. Keep OpenCV pulled the same way (or switch to a CocoaPods OpenCV pod).
-- `ios/Classes/PaddleOcrEngine.mm` — swap the three `*Predictor` constructions for ORT sessions. Keep `GetRotateCropImage` and the dictionary-postprocess.
-- `ios/Classes/ppocr/det_process.cpp`, `rec_process.cpp`, `cls_process.cpp` — these directly call `paddle::lite_api`. Either rewrite them to call ORT, or replace them with thin wrappers around an ORT session. The pre/postprocess inside (`Preprocess` / `Postprocess` on each predictor) is salvageable.
+- `ios/flutter_paddleorc.podspec` — dropped Paddle Lite download/static lib; added `onnxruntime-c ~> 1.20.0` to preserve iOS 13 support. OpenCV is still downloaded by `prepare_command`.
+- `ios/Classes/ppocr/ort_predictor.{h,cpp}` — new shared ORT C++ session wrapper.
+- `ios/Classes/ppocr/det_process.cpp`, `rec_process.cpp`, `cls_process.cpp` — Paddle Lite calls replaced with `OrtPredictor`; pre/postprocess kept and adjusted for PP-OCRv5 mobile rec height/det thresholds.
 
 **Plugin Dart** — no API changes. README + CHANGELOG update only.
 
