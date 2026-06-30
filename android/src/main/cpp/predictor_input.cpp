@@ -3,14 +3,8 @@
 namespace ppredictor {
 
 void PredictorInput::set_dims(std::vector<int64_t> dims) {
-  // yolov3
-  if (_net_flag == 101 && _index == 1) {
-    _tensor->Resize({1, 2});
-    _tensor->mutable_data<int>()[0] = (int)dims.at(2);
-    _tensor->mutable_data<int>()[1] = (int)dims.at(3);
-  } else {
-    _tensor->Resize(dims);
-  }
+  *_shape = std::move(dims);
+  _data->resize(product(*_shape));
   _is_dims_set = true;
 }
 
@@ -18,7 +12,7 @@ float *PredictorInput::get_mutable_float_data() {
   if (!_is_dims_set) {
     LOGE("PredictorInput::set_dims is not called");
   }
-  return _tensor->mutable_data<float>();
+  return _data->data();
 }
 
 void PredictorInput::set_data(const float *input_data, int input_float_len) {

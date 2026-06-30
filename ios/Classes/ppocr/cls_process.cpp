@@ -41,13 +41,7 @@ cv::Mat ClsResizeImg(cv::Mat img) {
 
 ClsPredictor::ClsPredictor(const std::string &modelDir, const int cpuThreadNum,
                            const std::string &cpuPowerMode) {
-  paddle::lite_api::MobileConfig config;
-  config.set_model_from_file(modelDir);
-  config.set_threads(cpuThreadNum);
-  config.set_power_mode(ParsePowerMode(cpuPowerMode));
-  predictor_ =
-      paddle::lite_api::CreatePaddlePredictor<paddle::lite_api::MobileConfig>(
-          config);
+  predictor_ = std::make_unique<OrtPredictor>(modelDir, cpuThreadNum);
 }
 
 void ClsPredictor::Preprocess(const cv::Mat &img) {
@@ -66,18 +60,16 @@ void ClsPredictor::Preprocess(const cv::Mat &img) {
 
   const float *dimg = reinterpret_cast<const float *>(resize_img.data);
 
-  std::unique_ptr<Tensor> input_tensor0(std::move(predictor_->GetInput(0)));
-  input_tensor0->Resize({1, 3, resize_img.rows, resize_img.cols});
-  auto *data0 = input_tensor0->mutable_data<float>();
+  auto *data0 =
+      predictor_->PrepareInput({1, 3, resize_img.rows, resize_img.cols});
   NHWC3ToNC3HW(dimg, data0, resize_img.rows * resize_img.cols, mean, scale);
 }
 
 cv::Mat ClsPredictor::Postprocess(const cv::Mat &srcimg, const float thresh) {
   // Get output and run postprocess
-  std::unique_ptr<const Tensor> softmax_out(
-      std::move(predictor_->GetOutput(0)));
-  auto *softmax_scores = softmax_out->mutable_data<float>();
-  auto softmax_out_shape = softmax_out->shape();
+  auto outputs = predictor_->Run();
+  auto *softmax_scores = outputs[0].data.data();
+  auto softmax_out_shape = outputs[0].shape;
   float score = 0;
   int label = 0;
   for (int i = 0; i < softmax_out_shape[1]; i++) {
@@ -103,12 +95,6 @@ cv::Mat ClsPredictor::Predict(const cv::Mat &img, double *preprocessTime,
   // tic.end();
   // *preprocessTime = tic.get_average_ms();
   // std::cout << "cls predictor preprocess costs" <<  *preprocessTime;
-
-  // tic.start();
-  predictor_->Run();
-  // tic.end();
-  // *predictTime = tic.get_average_ms();
-  // std::cout << "cls predictor predict costs" <<  *predictTime;
 
   //  tic.start();
   cv::Mat srcimg = Postprocess(src_img, thresh);

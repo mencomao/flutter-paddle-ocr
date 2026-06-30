@@ -1,66 +1,72 @@
 #include "ppredictor.h"
 #include "common.h"
+#include <fstream>
 
 namespace ppredictor {
 PPredictor::PPredictor(int use_opencl, int thread_num, int net_flag,
-                       paddle::lite_api::PowerMode mode)
+                       CpuPowerMode mode)
     : _use_opencl(use_opencl), _thread_num(thread_num), _net_flag(net_flag),
-      _mode(mode) {}
+      _mode(mode), _env(ORT_LOGGING_LEVEL_WARNING, "flutter_paddle_ocr") {}
 
 int PPredictor::init_nb(const std::string &model_content) {
-  paddle::lite_api::MobileConfig config;
-  config.set_model_from_buffer(model_content);
-  return _init(config);
+  return _init_session(model_content.data(), model_content.size(), nullptr);
 }
 
-int PPredictor::init_from_file(const std::string &model_content) {
-  paddle::lite_api::MobileConfig config;
-  config.set_model_from_file(model_content);
-  return _init(config);
+int PPredictor::init_from_file(const std::string &model_path) {
+  return _init_session(nullptr, 0, model_path.c_str());
 }
 
-template <typename ConfigT> int PPredictor::_init(ConfigT &config) {
-  bool is_opencl_backend_valid =
-      paddle::lite_api::IsOpenCLBackendValid(/*check_fp16_valid = false*/);
-  if (is_opencl_backend_valid) {
-    if (_use_opencl != 0) {
-      // Make sure you have write permission of the binary path.
-      // We strongly recommend each model has a unique binary name.
-      const std::string bin_path = "/data/local/tmp/";
-      const std::string bin_name = "lite_opencl_kernel.bin";
-      config.set_opencl_binary_path_name(bin_path, bin_name);
-
-      // opencl tune option
-      // CL_TUNE_NONE: 0
-      // CL_TUNE_RAPID: 1
-      // CL_TUNE_NORMAL: 2
-      // CL_TUNE_EXHAUSTIVE: 3
-      const std::string tuned_path = "/data/local/tmp/";
-      const std::string tuned_name = "lite_opencl_tuned.bin";
-      config.set_opencl_tune(paddle::lite_api::CL_TUNE_NORMAL, tuned_path,
-                             tuned_name);
-
-      // opencl precision option
-      // CL_PRECISION_AUTO: 0, first fp16 if valid, default
-      // CL_PRECISION_FP32: 1, force fp32
-      // CL_PRECISION_FP16: 2, force fp16
-      config.set_opencl_precision(paddle::lite_api::CL_PRECISION_FP32);
-      LOGI("ocr cpp device: running on gpu.");
-    }
-  } else {
-    LOGI("ocr cpp device: running on cpu.");
-    // you can give backup cpu nb model instead
-    // config.set_model_from_file(cpu_nb_model_dir);
+int PPredictor::_init_session(const void *model_data, size_t model_data_length,
+                              const char *model_path) {
+  _session_options.SetIntraOpNumThreads(_thread_num);
+  _session_options.SetGraphOptimizationLevel(
+      GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+  if (_use_opencl != 0) {
+    LOGW("ONNX Runtime Android backend currently ignores use_opencl.");
   }
-  config.set_threads(_thread_num);
-  config.set_power_mode(_mode);
-  _predictor = paddle::lite_api::CreatePaddlePredictor(config);
-  LOGI("ocr cpp paddle instance created");
-  return RETURN_OK;
+
+  try {
+    if (model_path != nullptr) {
+      _session.reset(new Ort::Session(_env, model_path, _session_options));
+    } else {
+      _session.reset(new Ort::Session(_env, model_data, model_data_length,
+                                      _session_options));
+    }
+
+    Ort::AllocatorWithDefaultOptions allocator;
+    size_t input_count = _session->GetInputCount();
+    size_t output_count = _session->GetOutputCount();
+
+    _input_names_storage.clear();
+    _output_names_storage.clear();
+    _input_names.clear();
+    _output_names.clear();
+
+    for (size_t i = 0; i < input_count; i++) {
+      auto name = _session->GetInputNameAllocated(i, allocator);
+      _input_names_storage.emplace_back(name.get());
+    }
+    for (size_t i = 0; i < output_count; i++) {
+      auto name = _session->GetOutputNameAllocated(i, allocator);
+      _output_names_storage.emplace_back(name.get());
+    }
+    for (const auto &name : _input_names_storage) {
+      _input_names.push_back(name.c_str());
+    }
+    for (const auto &name : _output_names_storage) {
+      _output_names.push_back(name.c_str());
+    }
+    LOGI("ocr cpp onnx session created inputs=%zu outputs=%zu", input_count,
+         output_count);
+    return RETURN_OK;
+  } catch (const Ort::Exception &e) {
+    LOGE("ONNX Runtime init failed: %s", e.what());
+    return -1;
+  }
 }
 
 PredictorInput PPredictor::get_input(int index) {
-  PredictorInput input{_predictor->GetInput(index), index, _net_flag};
+  PredictorInput input{&_input_data, &_input_shape, index, _net_flag};
   _is_input_get = true;
   return input;
 }
@@ -78,19 +84,35 @@ PredictorInput PPredictor::get_first_input() { return get_input(0); }
 std::vector<PredictorOutput> PPredictor::infer() {
   LOGI("ocr cpp infer Run start %d", _net_flag);
   std::vector<PredictorOutput> results;
-  if (!_is_input_get) {
+  if (!_is_input_get || !_session) {
     return results;
   }
-  _predictor->Run();
-  LOGI("ocr cpp infer Run end");
 
-  for (int i = 0; i < _predictor->GetOutputNames().size(); i++) {
-    std::unique_ptr<const paddle::lite_api::Tensor> output_tensor =
-        _predictor->GetOutput(i);
-    LOGI("ocr cpp output tensor[%d] size %ld", i,
-         product(output_tensor->shape()));
-    PredictorOutput result{std::move(output_tensor), i, _net_flag};
-    results.emplace_back(std::move(result));
+  try {
+    Ort::MemoryInfo memory_info =
+        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+        memory_info, _input_data.data(), _input_data.size(), _input_shape.data(),
+        _input_shape.size());
+
+    std::vector<Ort::Value> output_tensors = _session->Run(
+        Ort::RunOptions{nullptr}, _input_names.data(), &input_tensor, 1,
+        _output_names.data(), _output_names.size());
+    LOGI("ocr cpp infer Run end");
+
+    for (int i = 0; i < output_tensors.size(); i++) {
+      auto shape_info = output_tensors[i].GetTensorTypeAndShapeInfo();
+      std::vector<int64_t> shape = shape_info.GetShape();
+      size_t element_count = shape_info.GetElementCount();
+      const float *raw_output = output_tensors[i].GetTensorData<float>();
+      std::vector<float> output_data(raw_output, raw_output + element_count);
+      LOGI("ocr cpp output tensor[%d] size %zu", i, element_count);
+      PredictorOutput result{std::move(output_data), std::move(shape), i,
+                             _net_flag};
+      results.emplace_back(std::move(result));
+    }
+  } catch (const Ort::Exception &e) {
+    LOGE("ONNX Runtime infer failed: %s", e.what());
   }
   return results;
 }

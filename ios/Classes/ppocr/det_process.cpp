@@ -61,24 +61,18 @@ cv::Mat DetResizeImg(const cv::Mat img, int max_size_len,
 
 DetPredictor::DetPredictor(const std::string &modelDir, const int cpuThreadNum,
                            const std::string &cpuPowerMode) {
-  paddle::lite_api::MobileConfig config;
-  config.set_model_from_file(modelDir);
-  config.set_threads(cpuThreadNum);
-  config.set_power_mode(ParsePowerMode(cpuPowerMode));
-  predictor_ =
-      paddle::lite_api::CreatePaddlePredictor<paddle::lite_api::MobileConfig>(
-          config);
+  predictor_ = std::make_unique<OrtPredictor>(modelDir, cpuThreadNum);
 }
 
 void DetPredictor::Preprocess(const cv::Mat &srcimg, const int max_side_len) {
+  ratio_hw_.clear();
   cv::Mat img = DetResizeImg(srcimg, max_side_len, ratio_hw_);
   cv::Mat img_fp;
   img.convertTo(img_fp, CV_32FC3, 1.0 / 255.f);
 
   // Prepare input data from image
-  std::unique_ptr<Tensor> input_tensor0(std::move(predictor_->GetInput(0)));
-  input_tensor0->Resize({1, 3, img_fp.rows, img_fp.cols});
-  auto *data0 = input_tensor0->mutable_data<float>();
+  auto *data0 =
+      predictor_->PrepareInput({1, 3, img_fp.rows, img_fp.cols});
 
   std::vector<float> mean = {0.485f, 0.456f, 0.406f};
   std::vector<float> scale = {1 / 0.229f, 1 / 0.224f, 1 / 0.225f};
@@ -91,22 +85,19 @@ DetPredictor::Postprocess(const cv::Mat srcimg,
                           std::map<std::string, double> Config,
                           int det_db_use_dilate) {
   // Get output and post process
-  std::unique_ptr<const Tensor> output_tensor(
-      std::move(predictor_->GetOutput(0)));
-  auto *outptr = output_tensor->data<float>();
-  auto shape_out = output_tensor->shape();
+  auto outputs = predictor_->Run();
+  auto *outptr = outputs[0].data.data();
+  auto shape_out = outputs[0].shape;
 
   int s2 = int(shape_out[2]); // NOLINT
   int s3 = int(shape_out[3]); // NOLINT
   cv::Mat pred_map = cv::Mat::zeros(s2, s3, CV_32F);
   memcpy(pred_map.data, outptr, s2 * s3 * sizeof(float));
-  cv::Mat cbuf_map;
-  pred_map.convertTo(cbuf_map, CV_8UC1, 255.0f);
-
-  const double threshold = double(Config["det_db_thresh"]) * 255; // NOLINT
+  const double threshold = double(Config["det_db_thresh"]); // NOLINT
   const double max_value = 255;
   cv::Mat bit_map;
-  cv::threshold(cbuf_map, bit_map, threshold, max_value, cv::THRESH_BINARY);
+  cv::threshold(pred_map, bit_map, threshold, max_value, cv::THRESH_BINARY);
+  bit_map.convertTo(bit_map, CV_8UC1);
   if (det_db_use_dilate == 1) {
     cv::Mat dilation_map;
     cv::Mat dila_ele =
@@ -139,13 +130,6 @@ DetPredictor::Predict(cv::Mat &img, std::map<std::string, double> Config,
   // tic.end();
   // *preprocessTime = tic.get_average_ms();
   // std::cout << "det predictor preprocess costs" <<  *preprocessTime;
-
-  // tic.start();
-  // Run predictor
-  predictor_->Run();
-  //  tic.end();
-  //  *predictTime = tic.get_average_ms();
-  // std::cout << "det predictor predict costs" <<  *predictTime;
 
   //  tic.start();
   auto filter_boxes = Postprocess(srcimg, Config, det_db_use_dilate);

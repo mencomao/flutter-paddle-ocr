@@ -294,15 +294,14 @@ OCR_PPredictor::calc_filtered_boxes(const float *pred, int pred_size,
                                     int output_height, int output_width,
                                     const cv::Mat &origin) {
   const double threshold = 0.3;
-  const double maxvalue = 1;
+  const double maxvalue = 255;
 
   cv::Mat pred_map = cv::Mat::zeros(output_height, output_width, CV_32F);
   memcpy(pred_map.data, pred, pred_size * sizeof(float));
-  cv::Mat cbuf_map;
-  pred_map.convertTo(cbuf_map, CV_8UC1);
 
   cv::Mat bit_map;
-  cv::threshold(cbuf_map, bit_map, threshold, maxvalue, cv::THRESH_BINARY);
+  cv::threshold(pred_map, bit_map, threshold, maxvalue, cv::THRESH_BINARY);
+  bit_map.convertTo(bit_map, CV_8UC1);
 
   std::vector<std::vector<std::vector<int>>> boxes =
       boxes_from_bitmap(pred_map, bit_map);

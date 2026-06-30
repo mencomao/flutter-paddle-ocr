@@ -31,9 +31,9 @@ class FlutterPaddleOcrWeb extends FlutterPaddleOcrPlatform {
     final bundled = switch (source) {
       BundledModelSource s => s,
       FilePathsModelSource() => throw UnsupportedError(
-          'Web only supports ModelSource.bundled. paddleocr-js fetches models '
-          'itself — no file paths needed.',
-        ),
+        'Web only supports ModelSource.bundled. paddleocr-js fetches models '
+        'itself — no file paths needed.',
+      ),
     };
     await _waitForSdk();
     // onnxruntime-web can't infer its WASM path when paddleocr-js is bundled
@@ -102,10 +102,12 @@ OcrResult _fromJs(_JsItem item) {
   final poly = item.poly;
   final points = poly == null
       ? const <Offset>[]
-      : poly.toDart.map((p) {
-          final pair = p.toDart;
-          return Offset(pair[0].toDartDouble, pair[1].toDartDouble);
-        }).toList(growable: false);
+      : poly.toDart
+            .map((p) {
+              final pair = p.toDart;
+              return Offset(pair[0].toDartDouble, pair[1].toDartDouble);
+            })
+            .toList(growable: false);
   return OcrResult(
     text: item.text ?? '',
     confidence: item.score ?? 0.0,

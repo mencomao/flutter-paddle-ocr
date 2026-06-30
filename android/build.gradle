@@ -26,19 +26,16 @@ allprojects {
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
-// Paddle Lite version is parameterized so future upgrades are a one-line change.
-// Override from example/android/gradle.properties or `-PpaddleLiteVersion=...` on the command line.
-def paddleLiteVersion = (project.findProperty('paddleLiteVersion') ?: 'v2_10').toString()
+// ONNX Runtime version is parameterized so downstream apps can pin/roll back.
+// Override from example/android/gradle.properties or `-PonnxRuntimeVersion=...`.
+def onnxRuntimeVersion = (project.findProperty('onnxRuntimeVersion') ?: '1.27.0').toString()
 def openCvUrl = (project.findProperty('openCvUrl') ?: 'https://paddlelite-demo.bj.bcebos.com/libs/android/opencv-4.2.0-android-sdk.tar.gz').toString()
 
 android {
     namespace = "com.huyphan.flutter_paddle_ocr"
 
     compileSdk = 36
-    // Paddle Lite v2.10's prebuilt libpaddle_light_api_shared.so was linked against
-    // an older ld. NDK 27+'s ld.lld errors on its _edata/_end/__bss_start symbols.
-    // r25c is the last NDK that links cleanly against it.
-    ndkVersion = "25.2.9519653"
+    ndkVersion = "27.3.13750724"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -58,13 +55,11 @@ android {
         minSdk = 24
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++11 -frtti -fexceptions -Wno-format"
+                cppFlags "-std=c++17 -frtti -fexceptions -Wno-format"
                 arguments '-DANDROID_PLATFORM=android-24', '-DANDROID_STL=c++_shared', '-DANDROID_ARM_NEON=TRUE'
             }
         }
         ndk {
-            // Paddle Lite v2.10's prebuilt archive only ships arm64-v8a (no armeabi-v7a).
-            // Google Play has required 64-bit since 2019, so this covers supported devices.
             abiFilters 'arm64-v8a'
         }
     }
@@ -77,6 +72,7 @@ android {
     }
 
     dependencies {
+        implementation("com.microsoft.onnxruntime:onnxruntime-android:${onnxRuntimeVersion}")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }
@@ -95,13 +91,9 @@ android {
 }
 
 // ---- Native archive download ----
-// Mirrors the PaddleOCR android_demo pattern: fetches Paddle Lite + OpenCV tarballs once,
-// caches by MD5, and extracts into the plugin's android/ directory so CMake can find them.
+// Fetch OpenCV and unpack the ONNX Runtime AAR once so CMake can link against
+// the C++ headers and libonnxruntime.so shipped in the Maven artifact.
 def archives = [
-        [
-                'src' : "https://paddleocr.bj.bcebos.com/libs/paddle_lite_libs_${paddleLiteVersion}.tar.gz",
-                'dest': 'PaddleLite'
-        ],
         [
                 'src' : openCvUrl,
                 'dest': 'OpenCV'
@@ -110,7 +102,7 @@ def archives = [
 
 task downloadAndExtractArchives(type: DefaultTask) {
     doFirst {
-        println "Downloading Paddle Lite (${paddleLiteVersion}) + OpenCV native archives"
+        println "Downloading OpenCV native archive and preparing ONNX Runtime ${onnxRuntimeVersion}"
     }
     doLast {
         String cachePath = "${project.projectDir}/cache"
@@ -138,4 +130,28 @@ task downloadAndExtractArchives(type: DefaultTask) {
         }
     }
 }
-preBuild.dependsOn downloadAndExtractArchives
+
+configurations {
+    onnxruntimeAar
+}
+
+dependencies {
+    onnxruntimeAar("com.microsoft.onnxruntime:onnxruntime-android:${onnxRuntimeVersion}@aar")
+}
+
+task extractOnnxRuntimeAar(type: Copy) {
+    from {
+        configurations.onnxruntimeAar.collect { zipTree(it) }
+    }
+    into "${project.projectDir}/OnnxRuntime"
+}
+
+preBuild.dependsOn downloadAndExtractArchives, extractOnnxRuntimeAar
+
+tasks.configureEach { task ->
+    if (task.name.startsWith("configureCMake") ||
+            task.name.startsWith("buildCMake") ||
+            task.name.startsWith("externalNativeBuild")) {
+        task.dependsOn downloadAndExtractArchives, extractOnnxRuntimeAar
+    }
+}

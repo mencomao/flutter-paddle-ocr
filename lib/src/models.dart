@@ -1,7 +1,7 @@
 import 'dart:ui';
 
-/// CPU power mode hint passed through to Paddle Lite on Android/iOS.
-/// Mirrors `paddle::lite_api::PowerMode` (see `ppredictor.cpp`). Ignored on web.
+/// CPU power mode hint kept for source compatibility.
+/// Ignored by the ONNX Runtime native backends and by web.
 enum CpuPower {
   high('LITE_POWER_HIGH'),
   low('LITE_POWER_LOW'),
@@ -47,7 +47,9 @@ class OcrResult {
       confidence: (map['confidence'] as num?)?.toDouble() ?? 0,
       points: rawPoints
           .cast<List<dynamic>>()
-          .map((p) => Offset((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .map(
+            (p) => Offset((p[0] as num).toDouble(), (p[1] as num).toDouble()),
+          )
           .toList(growable: false),
       isUpsideDown: map['isUpsideDown'] as bool?,
       angleConfidence: (map['angleConfidence'] as num?)?.toDouble(),

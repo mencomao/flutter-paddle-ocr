@@ -113,9 +113,10 @@ static cv::Mat GetRotateCropImage(const cv::Mat &srcimage,
   std::map<std::string, double> cfg = {
       {"max_side_len", (double)maxSideLen},
       {"det_db_thresh", 0.3},
-      {"det_db_box_thresh", 0.5},
-      {"det_db_unclip_ratio", 1.6},
+      {"det_db_box_thresh", 0.6},
+      {"det_db_unclip_ratio", 1.5},
       {"det_db_use_dilate", 0},
+      {"det_use_polygon_score", 0},
       {"use_direction_classify", runCls ? 1.0 : 0.0},
   };
 

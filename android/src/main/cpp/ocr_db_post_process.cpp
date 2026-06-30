@@ -37,8 +37,7 @@ static void getcontourarea(float **box, float unclip_ratio, float &distance) {
   distance = area * unclip_ratio / dist;
 }
 
-static cv::RotatedRect unclip(float **box) {
-  float unclip_ratio = 2.0;
+static cv::RotatedRect unclip(float **box, float unclip_ratio) {
   float distance = 1.0;
 
   getcontourarea(box, unclip_ratio, distance);
@@ -239,10 +238,10 @@ float box_score_fast(float **box_array, cv::Mat pred) {
 }
 
 std::vector<std::vector<std::vector<int>>>
-boxes_from_bitmap(const cv::Mat &pred, const cv::Mat &bitmap) {
+boxes_from_bitmap(const cv::Mat &pred, const cv::Mat &bitmap, float box_thresh,
+                  float unclip_ratio) {
   const int min_size = 3;
   const int max_candidates = 1000;
-  const float box_thresh = 0.5;
 
   int width = bitmap.cols;
   int height = bitmap.rows;
@@ -278,7 +277,7 @@ boxes_from_bitmap(const cv::Mat &pred, const cv::Mat &bitmap) {
     }
 
     // start for unclip
-    cv::RotatedRect points = unclip(box_for_unclip);
+    cv::RotatedRect points = unclip(box_for_unclip, unclip_ratio);
     // end for unclip
 
     cv::RotatedRect clipbox = points;

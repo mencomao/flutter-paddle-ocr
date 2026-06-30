@@ -16,7 +16,8 @@
 #include "timer.h"
 #include "utils.h"
 
-const std::vector<int> rec_image_shape{3, 32, 320};
+const std::vector<int> rec_image_shape{3, 48, 320};
+const int max_rec_width = 3200;
 
 cv::Mat CrnnResizeImg(cv::Mat img, float wh_ratio) {
   int imgC, imgH, imgW;
@@ -24,7 +25,8 @@ cv::Mat CrnnResizeImg(cv::Mat img, float wh_ratio) {
   imgW = rec_image_shape[2];
   imgH = rec_image_shape[1];
 
-  imgW = int(32 * wh_ratio);
+  float max_wh_ratio = std::max(static_cast<float>(imgW) / imgH, wh_ratio);
+  imgW = std::min(max_rec_width, std::max(1, int(imgH * max_wh_ratio)));
 
   float ratio = static_cast<float>(img.cols) / static_cast<float>(img.rows);
   int resize_w, resize_h;
@@ -36,6 +38,10 @@ cv::Mat CrnnResizeImg(cv::Mat img, float wh_ratio) {
   cv::resize(img, resize_img, cv::Size(resize_w, imgH), 0.f, 0.f,
              cv::INTER_LINEAR);
 
+  if (resize_w < imgW) {
+    cv::copyMakeBorder(resize_img, resize_img, 0, 0, 0, imgW - resize_w,
+                       cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+  }
   return resize_img;
 }
 
@@ -46,13 +52,7 @@ inline size_t Argmax(ForwardIterator first, ForwardIterator last) {
 
 RecPredictor::RecPredictor(const std::string &modelDir, const int cpuThreadNum,
                            const std::string &cpuPowerMode) {
-  paddle::lite_api::MobileConfig config;
-  config.set_model_from_file(modelDir);
-  config.set_threads(cpuThreadNum);
-  config.set_power_mode(ParsePowerMode(cpuPowerMode));
-  predictor_ =
-      paddle::lite_api::CreatePaddlePredictor<paddle::lite_api::MobileConfig>(
-          config);
+  predictor_ = std::make_unique<OrtPredictor>(modelDir, cpuThreadNum);
 }
 
 void RecPredictor::Preprocess(const cv::Mat &srcimg) {
@@ -65,9 +65,8 @@ void RecPredictor::Preprocess(const cv::Mat &srcimg) {
 
   const float *dimg = reinterpret_cast<const float *>(resize_img.data);
 
-  std::unique_ptr<Tensor> input_tensor0(std::move(predictor_->GetInput(0)));
-  input_tensor0->Resize({1, 3, resize_img.rows, resize_img.cols});
-  auto *data0 = input_tensor0->mutable_data<float>();
+  auto *data0 =
+      predictor_->PrepareInput({1, 3, resize_img.rows, resize_img.cols});
   NHWC3ToNC3HW(dimg, data0, resize_img.rows * resize_img.cols, mean, scale);
 }
 
@@ -75,10 +74,9 @@ std::pair<std::string, float>
 RecPredictor::Postprocess(const cv::Mat &rgbaImage,
                           std::vector<std::string> charactor_dict) {
   // Get output and run postprocess
-  std::unique_ptr<const Tensor> output_tensor0(
-      std::move(predictor_->GetOutput(0)));
-  auto *predict_batch = output_tensor0->data<float>();
-  auto predict_shape = output_tensor0->shape();
+  auto outputs = predictor_->Run();
+  auto *predict_batch = outputs[0].data.data();
+  auto predict_shape = outputs[0].shape;
 
   // ctc decode
   std::string str_res;
@@ -101,7 +99,7 @@ RecPredictor::Postprocess(const cv::Mat &rgbaImage,
     }
     last_index = argmax_idx;
   }
-  score /= count;
+  score = count > 0 ? score / count : 0.0f;
   return std::make_pair(str_res, score);
 }
 
@@ -115,12 +113,6 @@ RecPredictor::Predict(const cv::Mat &rgbaImage, double *preprocessTime,
   // tic.end();
   // *preprocessTime = tic.get_average_ms();
   // std::cout << "rec predictor preprocess costs" <<  *preprocessTime;
-
-  //  tic.start();
-  predictor_->Run();
-  // tic.end();
-  // *predictTime = tic.get_average_ms();
-  // std::cout << "rec predictor predict costs" <<  *predictTime;
 
   //  tic.start();
   auto res = Postprocess(rgbaImage, charactor_dict);

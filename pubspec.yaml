@@ -1,5 +1,5 @@
 name: flutter_paddle_ocr
-description: "On-device OCR for Flutter, powered by PaddleOCR + Paddle Lite (Android/iOS) and paddleocr-js (web)."
+description: "On-device OCR for Flutter, powered by PaddleOCR-compatible PP-OCR models, ONNX Runtime, and paddleocr-js."
 version: 0.0.2
 homepage: https://github.com/phanbaohuy96/flutter-paddle-ocr
 

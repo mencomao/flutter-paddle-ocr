@@ -1,16 +1,16 @@
 #pragma once
 
 #include "common.h"
-#include <paddle_api.h>
 #include <vector>
 
 namespace ppredictor {
 class PredictorOutput {
 public:
   PredictorOutput() {}
-  PredictorOutput(std::unique_ptr<const paddle::lite_api::Tensor> &&tensor,
-                  int index, int net_flag)
-      : _tensor(std::move(tensor)), _index(index), _net_flag(net_flag) {}
+  PredictorOutput(std::vector<float> data, std::vector<int64_t> shape, int index,
+                  int net_flag)
+      : data(std::move(data)), shape(std::move(shape)), _index(index),
+        _net_flag(net_flag) {}
 
   const float *get_float_data() const;
   const int *get_int_data() const;
@@ -20,11 +20,10 @@ public:
 
   std::vector<float> data;    // return float, or use data_int
   std::vector<int> data_int;  // several layers return int ，or use data
-  std::vector<int64_t> shape; // PaddleLite output shape
-  std::vector<std::vector<uint64_t>> lod; // PaddleLite output lod
+  std::vector<int64_t> shape;
+  std::vector<std::vector<uint64_t>> lod;
 
 private:
-  std::unique_ptr<const paddle::lite_api::Tensor> _tensor;
   int _index;
   int _net_flag;
 };

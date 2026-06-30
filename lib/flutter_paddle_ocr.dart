@@ -7,7 +7,7 @@ import 'src/models.dart';
 export 'src/model_source.dart';
 export 'src/models.dart';
 
-/// On-device OCR engine backed by PaddleOCR + Paddle Lite (Android/iOS) or
+/// On-device OCR engine backed by PaddleOCR + ONNX Runtime (Android/iOS) or
 /// paddleocr-js (web).
 ///
 /// Create one instance per set of models, then call [recognize] repeatedly.
@@ -23,13 +23,14 @@ class PaddleOcr {
   // Safety net: if the caller forgets to await dispose(), release the native
   // engine when the Dart object gets GC'd. Disposing explicitly is still
   // strongly recommended — a GC pass is not guaranteed.
-  static final Finalizer<Object> _finalizer =
-      Finalizer<Object>((handle) => FlutterPaddleOcrPlatform.instance.dispose(handle));
+  static final Finalizer<Object> _finalizer = Finalizer<Object>(
+    (handle) => FlutterPaddleOcrPlatform.instance.dispose(handle),
+  );
 
   /// Loads the models described by [source] and returns a ready-to-use engine.
   ///
   /// See [ModelSource] for the two variants:
-  ///  * [ModelSource.filePaths] — Android/iOS; supply .nb files + dictionary
+  ///  * [ModelSource.filePaths] — Android/iOS; supply .onnx files + dictionary
   ///  * [ModelSource.bundled]  — Web; paddleocr-js fetches .onnx by lang/version
   static Future<PaddleOcr> create({
     required ModelSource source,

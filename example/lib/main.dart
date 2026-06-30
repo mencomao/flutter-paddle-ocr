@@ -7,7 +7,8 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_paddle_ocr/flutter_paddle_ocr.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'mobile_bootstrap.dart' if (dart.library.js_interop) 'web_bootstrap.dart';
+import 'mobile_bootstrap.dart'
+    if (dart.library.js_interop) 'web_bootstrap.dart';
 
 void main() => runApp(const _App());
 
@@ -15,10 +16,13 @@ class _App extends StatelessWidget {
   const _App();
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'flutter_paddle_ocr example',
-        theme: ThemeData(colorSchemeSeed: const Color(0xFF3B85F5), useMaterial3: true),
-        home: const _HomePage(),
-      );
+    title: 'flutter_paddle_ocr example',
+    theme: ThemeData(
+      colorSchemeSeed: const Color(0xFF3B85F5),
+      useMaterial3: true,
+    ),
+    home: const _HomePage(),
+  );
 }
 
 class _HomePage extends StatefulWidget {
@@ -79,7 +83,9 @@ class _HomePageState extends State<_HomePage> {
     // Honour ByteData offset/length — Flutter Web sometimes returns a view
     // into a larger buffer, so a bare `data.buffer.asUint8List()` would hand
     // the decoder garbage bytes.
-    await _runOcr(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    await _runOcr(
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+    );
   }
 
   Future<void> _runOcr(Uint8List bytes) async {
@@ -100,7 +106,8 @@ class _HomePageState extends State<_HomePage> {
       setState(() {
         _phase = _Phase.ready;
         _output = _Output(image: image, results: results);
-        _status = 'Found ${results.length} regions in ${sw.elapsedMilliseconds} ms';
+        _status =
+            'Found ${results.length} regions in ${sw.elapsedMilliseconds} ms';
       });
     } catch (e) {
       setState(() {
@@ -119,9 +126,19 @@ class _HomePageState extends State<_HomePage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _fab('sample', Icons.auto_awesome, 'Run sample', canRun ? _runSample : null),
+          _fab(
+            'sample',
+            Icons.auto_awesome,
+            'Run sample',
+            canRun ? _runSample : null,
+          ),
           const SizedBox(height: 12),
-          _fab('pick', Icons.photo_library, 'Pick image', canRun ? _pickAndRecognize : null),
+          _fab(
+            'pick',
+            Icons.photo_library,
+            'Pick image',
+            canRun ? _pickAndRecognize : null,
+          ),
         ],
       ),
       body: Column(
@@ -133,7 +150,9 @@ class _HomePageState extends State<_HomePage> {
           if (_output != null) ...[
             Expanded(
               flex: 2,
-              child: InteractiveViewer(child: _ImageWithBoxes(output: _output!)),
+              child: InteractiveViewer(
+                child: _ImageWithBoxes(output: _output!),
+              ),
             ),
             if (_output!.results.isNotEmpty)
               Expanded(
@@ -157,13 +176,17 @@ class _HomePageState extends State<_HomePage> {
     );
   }
 
-  Widget _fab(String tag, IconData icon, String label, VoidCallback? onPressed) =>
-      FloatingActionButton.extended(
-        heroTag: tag,
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
-      );
+  Widget _fab(
+    String tag,
+    IconData icon,
+    String label,
+    VoidCallback? onPressed,
+  ) => FloatingActionButton.extended(
+    heroTag: tag,
+    onPressed: onPressed,
+    icon: Icon(icon),
+    label: Text(label),
+  );
 }
 
 class _Output {

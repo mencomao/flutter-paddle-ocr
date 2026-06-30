@@ -1,13 +1,13 @@
 /// How a [PaddleOcr] instance locates its models.
 ///
-/// The native (Android/iOS) backends need on-device paths to `.nb` files plus
+/// The native (Android/iOS) backends need on-device paths to `.onnx` files plus
 /// a character dictionary — use [ModelSource.filePaths]. The web backend uses
 /// `@paddleocr/paddleocr-js`, which fetches `.onnx` models from a CDN by
 /// language + version — use [ModelSource.bundled].
 sealed class ModelSource {
   const ModelSource();
 
-  /// Supply your own `.nb` files + character dictionary.
+  /// Supply your own `.onnx` files + character dictionary.
   ///
   /// Works on Android and iOS. Paths must be absolute on-device paths —
   /// typically obtained by extracting bundled assets into the app's documents
@@ -23,10 +23,8 @@ sealed class ModelSource {
   ///
   /// **Web only in v0.2** — throws [UnsupportedError] on Android/iOS. Defaults
   /// to the same PP-OCRv5 Chinese models that the paddleocr-js demo uses.
-  const factory ModelSource.bundled({
-    String lang,
-    String version,
-  }) = BundledModelSource;
+  const factory ModelSource.bundled({String lang, String version}) =
+      BundledModelSource;
 }
 
 class FilePathsModelSource extends ModelSource {

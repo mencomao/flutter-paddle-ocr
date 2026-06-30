@@ -6,7 +6,8 @@
 #include <vector>
 
 std::vector<std::vector<std::vector<int>>>
-boxes_from_bitmap(const cv::Mat &pred, const cv::Mat &bitmap);
+boxes_from_bitmap(const cv::Mat &pred, const cv::Mat &bitmap,
+                  float box_thresh = 0.6f, float unclip_ratio = 1.5f);
 
 std::vector<std::vector<std::vector<int>>>
 filter_tag_det_res(const std::vector<std::vector<std::vector<int>>> &o_boxes,

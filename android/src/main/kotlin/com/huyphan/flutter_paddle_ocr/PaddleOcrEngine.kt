@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import com.baidu.paddle.lite.demo.ocr.OCRPredictorNative
 import com.baidu.paddle.lite.demo.ocr.OcrResultModel
 import java.io.File
+import java.nio.charset.StandardCharsets
 
 internal class PaddleOcrEngine(
     detPath: String,
@@ -56,5 +57,5 @@ internal class PaddleOcrEngine(
     // Leading "black" matches upstream PaddleOCR Predictor.java: the recognition CTC
     // output uses index 0 as the blank token, so the dictionary list is shifted by one.
     private fun loadLabels(path: String): List<String> =
-        listOf("black") + File(path).readLines() + " "
+        listOf("black") + File(path).readLines(StandardCharsets.UTF_8) + " "
 }

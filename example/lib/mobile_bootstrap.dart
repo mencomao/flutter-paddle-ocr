@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
@@ -5,52 +6,84 @@ import 'package:flutter_paddle_ocr/flutter_paddle_ocr.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-// PP-OCRv2 slim mobile bundle (det_db.nb + rec_crnn.nb + cls.nb) + Chinese dict.
-// Mirrors PaddleOCR/deploy/android_demo/app/build.gradle.
-const _modelArchiveUrl = 'https://paddleocr.bj.bcebos.com/PP-OCRv2/lite/ch_PP-OCRv2.tar.gz';
-const _dictArchiveUrl = 'https://paddleocr.bj.bcebos.com/dygraph_v2.0/lite/ch_dict.tar.gz';
+// Same PP-OCRv5 mobile ONNX assets that paddleocr-js uses for the web backend.
+const _detArchiveUrl =
+    'https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_mobile_det_onnx_infer.tar';
+const _recArchiveUrl =
+    'https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_mobile_rec_onnx_infer.tar';
 
 Future<ModelSource> prepareModelSource({
   required void Function(String) onStatus,
 }) async {
   final dir = await getApplicationSupportDirectory();
-  final modelsDir = Directory('${dir.path}/paddle_ocr')..createSync(recursive: true);
+  final modelsDir = Directory('${dir.path}/paddle_ocr')
+    ..createSync(recursive: true);
 
-  final det = File('${modelsDir.path}/det_db.nb');
-  final rec = File('${modelsDir.path}/rec_crnn.nb');
-  final cls = File('${modelsDir.path}/cls.nb');
-  final dict = File('${modelsDir.path}/ppocr_keys_v1.txt');
+  final det = File('${modelsDir.path}/PP-OCRv5_mobile_det.onnx');
+  final rec = File('${modelsDir.path}/PP-OCRv5_mobile_rec.onnx');
+  final dict = File('${modelsDir.path}/ppocr_keys_v5_utf8.txt');
 
-  if (!det.existsSync() || !rec.existsSync() || !cls.existsSync()) {
-    onStatus('Downloading PP-OCRv2 models (~7 MB)...');
-    await _downloadAndExtract(_modelArchiveUrl, modelsDir);
+  if (!det.existsSync()) {
+    onStatus('Downloading PP-OCRv5 detection model (~5 MB)...');
+    await _downloadModel(_detArchiveUrl, det);
   }
-  if (!dict.existsSync()) {
-    onStatus('Downloading Chinese dictionary...');
-    await _downloadAndExtract(_dictArchiveUrl, modelsDir);
+  if (!rec.existsSync() || !dict.existsSync()) {
+    onStatus('Downloading PP-OCRv5 recognition model (~16 MB)...');
+    final recConfig = await _downloadModel(_recArchiveUrl, rec);
+    await _writeDictionaryFromConfig(recConfig, dict);
   }
 
-  return ModelSource.filePaths(
-    det: det.path,
-    rec: rec.path,
-    cls: cls.path,
-    dict: dict.path,
-  );
+  return ModelSource.filePaths(det: det.path, rec: rec.path, dict: dict.path);
 }
 
-Future<void> _downloadAndExtract(String url, Directory into) async {
+Future<String> _downloadModel(String url, File modelFile) async {
   final response = await http.get(Uri.parse(url));
   if (response.statusCode != 200) {
     throw Exception('HTTP ${response.statusCode} downloading $url');
   }
-  final archive = TarDecoder().decodeBytes(GZipDecoder().decodeBytes(response.bodyBytes));
+  String? configText;
+  final archive = TarDecoder().decodeBytes(response.bodyBytes);
   for (final entry in archive) {
     if (!entry.isFile) continue;
-    final slash = entry.name.indexOf('/');
-    final name = slash >= 0 ? entry.name.substring(slash + 1) : entry.name;
-    if (name.isEmpty) continue;
-    File('${into.path}/$name')
-      ..parent.createSync(recursive: true)
-      ..writeAsBytesSync(entry.content as List<int>);
+    final name = entry.name.split('/').last;
+    if (name == 'inference.onnx') {
+      modelFile
+        ..parent.createSync(recursive: true)
+        ..writeAsBytesSync(entry.content as List<int>);
+    } else if (name == 'inference.yml') {
+      configText = utf8.decode(entry.content as List<int>);
+    }
   }
+  if (!modelFile.existsSync()) {
+    throw Exception('inference.onnx not found in $url');
+  }
+  return configText ?? '';
+}
+
+Future<void> _writeDictionaryFromConfig(
+  String configText,
+  File dictFile,
+) async {
+  final chars = <String>[];
+  var inCharacterDict = false;
+  for (final rawLine in configText.split('\n')) {
+    final line = rawLine.endsWith('\r')
+        ? rawLine.substring(0, rawLine.length - 1)
+        : rawLine;
+    if (RegExp(r'^\s*character_dict\s*:\s*$').hasMatch(line)) {
+      inCharacterDict = true;
+      continue;
+    }
+    if (!inCharacterDict) continue;
+    final itemMatch = RegExp(r'^\s*-\s?(.*)$').firstMatch(line);
+    if (itemMatch == null) {
+      if (line.trim().isEmpty) continue;
+      break;
+    }
+    chars.add(itemMatch.group(1)!);
+  }
+  if (chars.isEmpty) {
+    throw Exception('character_dict not found in recognition inference.yml');
+  }
+  await dictFile.writeAsString('${chars.join('\n')}\n', encoding: utf8);
 }

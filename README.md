@@ -1,171 +1,296 @@
 # flutter_paddle_ocr
 
-On-device OCR for Flutter. One Dart API, three backends:
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Flutter](https://img.shields.io/badge/Flutter-plugin-02569B.svg)](https://flutter.dev)
+[![PaddleOCR](https://img.shields.io/badge/PaddleOCR-PP--OCRv5-1E88E5.svg)](https://github.com/PaddlePaddle/PaddleOCR)
 
-- **Android** wraps PaddleOCR's [`deploy/android_demo/`](https://github.com/PaddlePaddle/PaddleOCR/tree/main/deploy/android_demo) C++/JNI pipeline over Paddle Lite v2.10
-- **iOS** wraps Paddle-Lite-Demo's [`ocr/ios/ppocr_demo/`](https://github.com/PaddlePaddle/Paddle-Lite-Demo/tree/develop/ocr/ios/ppocr_demo) Obj-C++ pipeline over the same Paddle Lite runtime
-- **Web** binds [`@paddleocr/paddleocr-js`](https://www.npmjs.com/package/@paddleocr/paddleocr-js) (ONNX Runtime Web + OpenCV.js) through `dart:js_interop`
+English | [简体中文](README.zh-CN.md)
+
+A Flutter plugin for on-device OCR, powered by PaddleOCR-compatible PP-OCR
+models and ONNX Runtime.
+
+The goal of this project is to make high-quality OCR usable from one Dart API
+across Android, iOS, and Web. It is an independent community project, not an
+official PaddleOCR package.
 
 <p align="center">
-  <img src="doc/screenshots/android.png" width="280" alt="Android sample running PP-OCRv2" />
+  <img src="doc/screenshots/android.png" width="280" alt="Android example running OCR" />
   &nbsp;
-  <img src="doc/screenshots/web_result.png" width="280" alt="Web sample running PP-OCRv5 via paddleocr-js" />
+  <img src="doc/screenshots/web_result.png" width="280" alt="Web example running OCR" />
 </p>
 
-<sub>Left: Android emulator, PP-OCRv2 via Paddle Lite. Right: Chrome, PP-OCRv5 via paddleocr-js. iOS device screenshot pending — Paddle Lite v2.10 ships an arm64-device-only `.a` so it can't run in the simulator.</sub>
+## Features
 
----
+- One Dart API for Android, iOS, and Web.
+- Mobile inference through ONNX Runtime and native PaddleOCR-style
+  pre/post-processing.
+- Web inference through
+  [`@paddleocr/paddleocr-js`](https://www.npmjs.com/package/@paddleocr/paddleocr-js).
+- PP-OCRv5 mobile ONNX model support.
+- Text box polygons, recognized text, and confidence scores.
+- Example app with model download, UTF-8 dictionary extraction, sample image,
+  gallery picking, and web bootstrap script.
 
-## Compatibility matrix
+## Platform Support
 
-| Platform | Backend | Models |
+| Platform | Status | Backend | Model source |
+| --- | --- | --- | --- |
+| Android arm64-v8a | Supported | ONNX Runtime Android `1.27.0` + OpenCV | `ModelSource.filePaths` |
+| iOS arm64 device | Supported | `onnxruntime-c ~> 1.20.0` + OpenCV | `ModelSource.filePaths` |
+| Web | Supported | paddleocr-js + ONNX Runtime Web | `ModelSource.bundled` |
+| Android 32-bit | Not packaged | N/A | N/A |
+| iOS Apple Silicon simulator | Limited | Current OpenCV framework lacks arm64-simulator slice | Use a real device or x86_64 simulator where available |
+
+## PaddleOCR Model Support
+
+| PaddleOCR model family | Status | Notes |
 | --- | --- | --- |
-| Android arm64-v8a (min SDK 24) | Paddle Lite v2.10 (`.nb`) | PP-OCRv2 / v3 slim via `ModelSource.filePaths` |
-| iOS 13+ arm64 device | Paddle Lite v2.10 (`.a`) | PP-OCRv2 / v3 slim via `ModelSource.filePaths` |
-| Web (Chrome, Safari, Firefox) | paddleocr-js + ONNX Runtime Web | PP-OCRv5 via `ModelSource.bundled` (fetched from CDN) |
+| PP-OCRv5 mobile ONNX | Supported | Current default for Android, iOS, and Web |
+| PP-OCRv6 small/tiny ONNX | Planned | The ONNX Runtime backend is a good fit, but v6 still needs downloader changes, YAML parsing, parameter wiring, and device benchmarks |
+| PP-OCRv6 medium ONNX | Not targeted for mobile | Server-oriented model size and latency profile |
+| Paddle Lite `.nb` PP-OCRv2/v3 | Replaced | The old Paddle Lite mobile backend has been removed in this branch |
 
-Known gaps:
-- **Android armeabi-v7a** — Paddle Lite v2.10's prebuilt archive doesn't ship 32-bit libs. Google Play has required 64-bit since 2019 so this covers almost every supported device.
-- **iOS simulator** — Paddle Lite v2.10 publishes an arm64-device-only `.a`. Test on a physical device.
-- **PP-OCRv5 on mobile** — upstream hasn't published mobile-optimized `.nb` files yet. Web gets v5 because paddleocr-js runs the full ONNX models.
+The Dart API is model-family agnostic, but PaddleOCR preprocessing and
+postprocessing are model-specific. A newer `.onnx` file should not be assumed to
+work by path replacement alone.
 
 ## Installation
+
+Use the package from pub.dev when published:
 
 ```sh
 flutter pub add flutter_paddle_ocr
 ```
 
-Or pin a version in `pubspec.yaml`:
+Or depend on a local checkout:
 
 ```yaml
 dependencies:
-  flutter_paddle_ocr: ^0.0.2
+  flutter_paddle_ocr:
+    path: ../flutter-paddle-ocr
 ```
 
-### Android setup
+## Quick Start
 
-Paddle Lite v2.10 predates NDK r27's stricter linker, so the plugin pins **NDK r25c** (`25.2.9519653`):
+```dart
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_paddle_ocr/flutter_paddle_ocr.dart';
+
+Future<List<OcrResult>> recognizeImage(Uint8List imageBytes) async {
+  final source = kIsWeb
+      ? const ModelSource.bundled(lang: 'ch', version: 'PP-OCRv5')
+      : const ModelSource.filePaths(
+          det: '/absolute/path/PP-OCRv5_mobile_det.onnx',
+          rec: '/absolute/path/PP-OCRv5_mobile_rec.onnx',
+          dict: '/absolute/path/ppocr_keys_v5_utf8.txt',
+        );
+
+  final ocr = await PaddleOcr.create(source: source, cpuThreadNum: 4);
+
+  try {
+    return await ocr.recognize(
+      imageBytes,
+      maxSideLen: 960,
+      runDetection: true,
+      runClassification: false,
+      runRecognition: true,
+    );
+  } finally {
+    await ocr.dispose();
+  }
+}
 ```
-sdkmanager --install "ndk;25.2.9519653"
+
+Each `OcrResult` contains:
+
+- `text`: recognized string
+- `confidence`: recognition confidence
+- `points`: text polygon in source-image pixels
+- `isUpsideDown` and `angleConfidence`: optional angle-classifier result
+
+## Mobile Models
+
+Android and iOS currently use `ModelSource.filePaths`, so the application must
+provide local model and dictionary files. The example app downloads PP-OCRv5
+mobile ONNX assets on first launch:
+
+- Detection model:
+  `https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_mobile_det_onnx_infer.tar`
+- Recognition model:
+  `https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_mobile_rec_onnx_infer.tar`
+
+The recognition archive includes `inference.yml`. The example extracts
+`PostProcess.character_dict` into `ppocr_keys_v5_utf8.txt` using UTF-8. This is
+important for Chinese and multilingual recognition; a dictionary written with a
+wrong charset will produce garbled text.
+
+See [example/lib/mobile_bootstrap.dart](example/lib/mobile_bootstrap.dart) for
+the complete downloader and dictionary extractor.
+
+## Run The Example
+
+Mobile:
+
+```sh
+cd example
+flutter run
 ```
 
-On first build `android/build.gradle` downloads:
-- `paddle_lite_libs_v2_10.tar.gz` (~75 MB) — native `libpaddle_light_api_shared.so`
-- `opencv-4.2.0-android-sdk.tar.gz` (~150 MB) — OpenCV static libs
+Web:
 
-Cached in `android/cache/` by MD5, so repeat builds are offline.
+```sh
+cd example
+./prepare_web.sh
+flutter run -d chrome
+```
 
-### iOS setup
+The example includes a bundled sample image and supports selecting an image from
+the gallery. Mobile first launch downloads about 21 MB of PP-OCRv5 ONNX model
+files.
 
-On `pod install`, the plugin's `prepare_command` downloads:
-- `paddle_lite_libs_v2_10_rc.tar.gz` (~15 MB) — `libpaddle_api_light_bundled.a`
-- `opencv-4.5.5-ios-framework.tar.gz` (~215 MB) — `opencv2.framework`
+## Setup Notes
 
-The example app also needs photo-library permission — add to `ios/Runner/Info.plist`:
+### Android
+
+- Minimum SDK: 24
+- Packaged ABI: `arm64-v8a`
+- NDK: `27.3.13750724`
+
+Install the NDK if needed:
+
+```sh
+sdkmanager --install "ndk;27.3.13750724"
+```
+
+The plugin build downloads ONNX Runtime Android from Maven Central and OpenCV
+Android SDK from Paddle Lite demo storage. Generated native files are cached
+under `android/cache/`, `android/OpenCV/`, and `android/OnnxRuntime/`.
+
+### iOS
+
+- iOS 13+
+- Real device: arm64
+- CocoaPods
+
+During `pod install`, the plugin resolves `onnxruntime-c` and downloads an
+OpenCV iOS framework. If your app picks images from the photo library, add:
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>OCR on images from your photo library.</string>
 ```
 
-### Web setup
+### Web
 
-paddleocr-js is ESM-only with Node-ish transitive deps that don't load cleanly from a CDN. The example ships `prepare_web.sh` which bundles everything into one `web/paddleocr_bundle.js` via esbuild:
+The web backend expects `window.PaddleOCR`. The example uses esbuild to bundle
+`@paddleocr/paddleocr-js` into `web/paddleocr_bundle.js`.
 
-```
-./example/prepare_web.sh       # requires Node.js
-```
+Your own app can copy the same bootstrap approach from
+[example/prepare_web.sh](example/prepare_web.sh) and
+[example/web/index.html](example/web/index.html).
 
-Then reference the bundle in `web/index.html`:
+## Architecture
 
-```html
-<script src="paddleocr_bundle.js"></script>
-```
-
-Downstream apps can copy the same script into their own `web/` directory. The bundle is ~11 MB; ONNX Runtime's WASM is fetched separately from the CDN the plugin points `ortOptions.wasmPaths` at.
-
-## Usage
-
-```dart
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_paddle_ocr/flutter_paddle_ocr.dart';
-
-final source = kIsWeb
-    ? const ModelSource.bundled(lang: 'ch', version: 'PP-OCRv5')
-    : ModelSource.filePaths(
-        det:  '/path/to/det_db.nb',
-        rec:  '/path/to/rec_crnn.nb',
-        dict: '/path/to/ppocr_keys_v1.txt',
-        cls:  '/path/to/cls.nb',  // optional — enables angle classification
-      );
-
-final ocr = await PaddleOcr.create(source: source);
-
-final Uint8List bytes = ...;  // PNG/JPEG/WebP
-final results = await ocr.recognize(bytes, runClassification: !kIsWeb);
-for (final r in results) {
-  print('${r.text}  (${r.confidence.toStringAsFixed(2)})  ${r.points}');
-}
-
-await ocr.dispose();
+```text
+Dart PaddleOcr
+  -> FlutterPaddleOcrPlatform
+    -> Android MethodChannel -> Kotlin -> JNI -> C++ -> ONNX Runtime
+    -> iOS MethodChannel     -> Swift  -> Obj-C++ -> ONNX Runtime
+    -> Web                   -> dart:js_interop -> paddleocr-js
 ```
 
-### Getting mobile models
+The native preprocessing and postprocessing code follows PaddleOCR/Paddle-Lite
+demo pipelines. The inference adapter has been changed from Paddle Lite to ONNX
+Runtime so mobile and web can share ONNX model families.
 
-From PaddleOCR's own demo:
-- **PP-OCRv2 bundle** — https://paddleocr.bj.bcebos.com/PP-OCRv2/lite/ch_PP-OCRv2.tar.gz (`det_db.nb`, `rec_crnn.nb`, `cls.nb`)
-- **Chinese dictionary** — https://paddleocr.bj.bcebos.com/dygraph_v2.0/lite/ch_dict.tar.gz (`ppocr_keys_v1.txt`)
+## Troubleshooting
 
-For other languages see [PaddleOCR's model list](https://github.com/PaddlePaddle/PaddleOCR/blob/main/doc/doc_en/models_list_en.md) and pair the matching dictionary from [`ppocr/utils/`](https://github.com/PaddlePaddle/PaddleOCR/tree/main/ppocr/utils).
+### Chinese text is garbled
 
-The example app downloads and extracts these tarballs at first launch: [`example/lib/mobile_bootstrap.dart`](example/lib/mobile_bootstrap.dart).
+Regenerate the dictionary as UTF-8. The example writes
+`ppocr_keys_v5_utf8.txt` from `inference.yml`. If an older bad dictionary is
+already cached, delete app data or reinstall the example app.
 
-## Example
+### `character_dict not found in recognition inference.yml`
 
-```
+Use the latest [example/lib/mobile_bootstrap.dart](example/lib/mobile_bootstrap.dart).
+PP-OCRv5 stores the dictionary under `PostProcess.character_dict`, and the first
+item can be a fullwidth space. Trimming dictionary lines can break extraction.
+
+### iOS install fails with `objective_c.framework` invalid signature
+
+Do not install an app produced by `flutter build ios --no-codesign`. Clean
+unsigned output and rebuild with normal code signing:
+
+```sh
 cd example
-./prepare_web.sh          # only needed for `flutter run -d chrome`
-flutter run
+flutter clean
+flutter pub get
+flutter run -d <device-id>
 ```
 
-The demo ships a bundled sample image so OCR is verifiable without picking from the gallery. On mobile the first launch downloads ~5 MB of `.nb` models; on web paddleocr-js pulls ~13 MB of `.onnx` from the Baidu CDN.
+### iOS simulator cannot build for arm64
 
-## How it works
-
-```
- Dart (PaddleOcr.recognize)
-   ↓ FlutterPaddleOcrPlatform.instance
-   ├─ MethodChannelFlutterPaddleOcr            (Android, iOS)
-   │    ↓ MethodChannel
-   │    ├─ Kotlin  → JNI → C++ → Paddle Lite .nb    (Android)
-   │    └─ Swift   → Obj-C++ → Paddle Lite .nb      (iOS)
-   └─ FlutterPaddleOcrWeb                       (Web)
-        ↓ dart:js_interop
-        window.PaddleOCR → ONNX Runtime Web + OpenCV.js
-```
-
-Native sources are copied verbatim from upstream:
-- Android `android/src/main/cpp/` + `android/src/main/java/com/baidu/...` from [PaddleOCR/deploy/android_demo/](https://github.com/PaddlePaddle/PaddleOCR/tree/main/deploy/android_demo)
-- iOS `ios/Classes/ppocr/` from [Paddle-Lite-Demo/ocr/ios/ppocr_demo/](https://github.com/PaddlePaddle/Paddle-Lite-Demo/tree/develop/ocr/ios/ppocr_demo) (one NEON guard added to `utils.cpp` so non-ARM simulator builds link; see the file comment)
-
-The plugin adds a MethodChannel handler + a label-dictionary post-process on mobile, and a `dart:js_interop` binding on web — no changes to upstream algorithms.
-
-## Upgrading Paddle Lite
-
-Most users won't need to. If you do:
-
-1. Set `paddleLiteVersion` in your app's `android/gradle.properties` (or pass `-PpaddleLiteVersion=v2_12`).
-2. Edit `PADDLE_LITE_VERSION` in `ios/flutter_paddle_ocr.podspec`'s `prepare_command`, or point it at a different tarball.
-3. Delete the cached archives (`<plugin>/android/PaddleLite/`, `<plugin>/android/cache/`, `<plugin>/ios/Frameworks/`) to force a re-download.
-4. Rebuild. If the C++ wrappers no longer compile, patch `ppredictor.cpp` / `predictor_input.cpp` / `predictor_output.cpp` — they're thin wrappers around `paddle::lite_api::MobileConfig` and the delta between versions is usually a handful of lines.
-5. Re-optimize `.nb` models with the new `opt` tool if the naive-buffer format changed.
+The current OpenCV framework does not include an arm64-simulator slice. Use a
+real device or an x86_64 simulator runtime where available.
 
 ## Roadmap
 
-- **v0.3** — switch the native backends from Paddle Lite to ONNX Runtime Mobile so PP-OCRv5 works on Android/iOS and the iOS simulator gap goes away. See [`doc/migration-v0.3-onnx.md`](doc/migration-v0.3-onnx.md).
+- Add first-class `PP-OCRv6_small` and `PP-OCRv6_tiny` profiles.
+- Parse `inference.yml` more completely instead of hardcoding detection and
+  recognition parameters.
+- Move the mobile model downloader from the example into the plugin as mobile
+  `ModelSource.bundled`.
+- Add Android/iOS benchmark views for cold start, detection time, recognition
+  time, total latency, and peak memory.
+- Improve iOS OpenCV distribution so Apple Silicon simulators do not require
+  excluding arm64.
+- Evaluate optional ONNX Runtime acceleration paths such as iOS Core ML
+  Execution Provider and Android NNAPI after correctness is stable.
+
+## Contributing
+
+Issues and pull requests are welcome. Helpful contributions include:
+
+- Android and iOS device benchmark results
+- PP-OCRv6 model profile support
+- OpenCV packaging improvements
+- Web bundling improvements
+- Better examples and documentation
+
+Please keep changes focused and include the device, OS, Flutter version, and
+model version when reporting runtime or accuracy issues.
+
+## Upstream Projects And Acknowledgements
+
+This project is possible because of excellent open-source work from the OCR,
+Flutter, and native inference communities.
+
+Special thanks to:
+
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) for the PP-OCR model
+  family and OCR pipeline design.
+- [PaddleOCR Android demo](https://github.com/PaddlePaddle/PaddleOCR/tree/main/deploy/android_demo)
+  and [Paddle-Lite-Demo iOS ppocr demo](https://github.com/PaddlePaddle/Paddle-Lite-Demo/tree/develop/ocr/ios/ppocr_demo)
+  for native preprocessing/postprocessing references.
+- [flutter-paddle-ocr by phanbaohuy96](https://github.com/phanbaohuy96/flutter-paddle-ocr),
+  the original Flutter plugin this work started from.
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime) for cross-platform
+  ONNX inference.
+- [paddleocr-js](https://www.npmjs.com/package/@paddleocr/paddleocr-js) for the
+  web OCR runtime.
+- [OpenCV](https://opencv.org/) for image processing primitives.
+- [Flutter](https://flutter.dev/) for the cross-platform application framework.
+
+This repository is not affiliated with, sponsored by, or endorsed by
+PaddlePaddle, PaddleOCR, Microsoft, OpenCV, or Flutter.
 
 ## License
 
-Apache License 2.0 — same as the reused upstream PaddleOCR and Paddle-Lite-Demo sources.
+This project is released under the [Apache License 2.0](LICENSE).
+
+Model files and third-party dependencies are distributed by their respective
+owners under their own licenses and terms. Check those projects before
+redistributing model weights or native binaries in a commercial application.

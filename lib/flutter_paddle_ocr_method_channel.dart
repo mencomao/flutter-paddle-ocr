@@ -19,10 +19,10 @@ class MethodChannelFlutterPaddleOcr extends FlutterPaddleOcrPlatform {
     final paths = switch (source) {
       FilePathsModelSource s => s,
       BundledModelSource() => throw UnsupportedError(
-          'ModelSource.bundled is not yet supported on Android/iOS in v0.2. '
-          'Use ModelSource.filePaths(...) and supply .nb files and a dictionary. '
-          'See example/lib/main.dart for a download helper.',
-        ),
+        'ModelSource.bundled is not yet supported on Android/iOS in v0.2. '
+        'Use ModelSource.filePaths(...) and supply .onnx files and a dictionary. '
+        'See example/lib/main.dart for a download helper.',
+      ),
     };
     final id = await methodChannel.invokeMethod<int>(_Channel.create, {
       _Channel.detModelPath: paths.det,
@@ -45,14 +45,15 @@ class MethodChannelFlutterPaddleOcr extends FlutterPaddleOcrPlatform {
     bool runClassification = false,
     bool runRecognition = true,
   }) async {
-    final raw = await methodChannel.invokeListMethod<dynamic>(_Channel.recognize, {
-      _Channel.instanceId: handle as int,
-      _Channel.imageBytes: imageBytes,
-      _Channel.maxSideLen: maxSideLen,
-      _Channel.runDetection: runDetection,
-      _Channel.runClassification: runClassification,
-      _Channel.runRecognition: runRecognition,
-    });
+    final raw = await methodChannel
+        .invokeListMethod<dynamic>(_Channel.recognize, {
+          _Channel.instanceId: handle as int,
+          _Channel.imageBytes: imageBytes,
+          _Channel.maxSideLen: maxSideLen,
+          _Channel.runDetection: runDetection,
+          _Channel.runClassification: runClassification,
+          _Channel.runRecognition: runRecognition,
+        });
     return (raw ?? const [])
         .cast<Map<dynamic, dynamic>>()
         .map(OcrResult.fromMap)
@@ -60,8 +61,10 @@ class MethodChannelFlutterPaddleOcr extends FlutterPaddleOcrPlatform {
   }
 
   @override
-  Future<void> dispose(Object handle) =>
-      methodChannel.invokeMethod<void>(_Channel.dispose, {_Channel.instanceId: handle as int});
+  Future<void> dispose(Object handle) => methodChannel.invokeMethod<void>(
+    _Channel.dispose,
+    {_Channel.instanceId: handle as int},
+  );
 }
 
 // Method + argument names shared across the Dart/Kotlin/Swift boundary. Kept

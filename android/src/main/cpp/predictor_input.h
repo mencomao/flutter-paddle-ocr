@@ -1,15 +1,14 @@
 #pragma once
 
 #include "common.h"
-#include <paddle_api.h>
 #include <vector>
 
 namespace ppredictor {
 class PredictorInput {
 public:
-  PredictorInput(std::unique_ptr<paddle::lite_api::Tensor> &&tensor, int index,
+  PredictorInput(std::vector<float> *data, std::vector<int64_t> *shape, int index,
                  int net_flag)
-      : _tensor(std::move(tensor)), _index(index), _net_flag(net_flag) {}
+      : _data(data), _shape(shape), _index(index), _net_flag(net_flag) {}
 
   void set_dims(std::vector<int64_t> dims);
 
@@ -18,7 +17,8 @@ public:
   void set_data(const float *input_data, int input_float_len);
 
 private:
-  std::unique_ptr<paddle::lite_api::Tensor> _tensor;
+  std::vector<float> *_data;
+  std::vector<int64_t> *_shape;
   bool _is_dims_set = false;
   int _index;
   int _net_flag;

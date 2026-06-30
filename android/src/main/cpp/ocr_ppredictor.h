@@ -6,7 +6,6 @@
 
 #include "ppredictor.h"
 #include <opencv2/opencv.hpp>
-#include <paddle_api.h>
 #include <string>
 
 namespace ppredictor {
@@ -17,8 +16,7 @@ namespace ppredictor {
 struct OCR_Config {
   int use_opencl = 0;
   int thread_num = 4; // Thread num
-  paddle::lite_api::PowerMode mode =
-      paddle::lite_api::LITE_POWER_HIGH; // PaddleLite Mode
+  CpuPowerMode mode = LITE_POWER_HIGH;
 };
 
 /**

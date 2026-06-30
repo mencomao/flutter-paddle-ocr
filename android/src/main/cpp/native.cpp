@@ -5,10 +5,10 @@
 #include "native.h"
 #include "ocr_ppredictor.h"
 #include <algorithm>
-#include <paddle_api.h>
+#include <cctype>
 #include <string>
 
-static paddle::lite_api::PowerMode str_to_cpu_mode(const std::string &cpu_mode);
+static ppredictor::CpuPowerMode str_to_cpu_mode(const std::string &cpu_mode);
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_baidu_paddle_lite_demo_ocr_OCRPredictorNative_init(
@@ -31,26 +31,28 @@ Java_com_baidu_paddle_lite_demo_ocr_OCRPredictorNative_init(
 }
 
 /**
- * "LITE_POWER_HIGH" convert to paddle::lite_api::LITE_POWER_HIGH
+ * "LITE_POWER_HIGH" convert to CpuPowerMode. ONNX Runtime does not expose
+ * Paddle Lite's CPU affinity modes, but preserving the mapping keeps the Dart
+ * API source-compatible.
  * @param cpu_mode
  * @return
  */
-static paddle::lite_api::PowerMode
-str_to_cpu_mode(const std::string &cpu_mode) {
-  static std::map<std::string, paddle::lite_api::PowerMode> cpu_mode_map{
-      {"LITE_POWER_HIGH", paddle::lite_api::LITE_POWER_HIGH},
-      {"LITE_POWER_LOW", paddle::lite_api::LITE_POWER_HIGH},
-      {"LITE_POWER_FULL", paddle::lite_api::LITE_POWER_FULL},
-      {"LITE_POWER_NO_BIND", paddle::lite_api::LITE_POWER_NO_BIND},
-      {"LITE_POWER_RAND_HIGH", paddle::lite_api::LITE_POWER_RAND_HIGH},
-      {"LITE_POWER_RAND_LOW", paddle::lite_api::LITE_POWER_RAND_LOW}};
+static ppredictor::CpuPowerMode str_to_cpu_mode(const std::string &cpu_mode) {
+  static std::map<std::string, ppredictor::CpuPowerMode> cpu_mode_map{
+      {"LITE_POWER_HIGH", ppredictor::LITE_POWER_HIGH},
+      {"LITE_POWER_LOW", ppredictor::LITE_POWER_LOW},
+      {"LITE_POWER_FULL", ppredictor::LITE_POWER_FULL},
+      {"LITE_POWER_NO_BIND", ppredictor::LITE_POWER_NO_BIND},
+      {"LITE_POWER_RAND_HIGH", ppredictor::LITE_POWER_RAND_HIGH},
+      {"LITE_POWER_RAND_LOW", ppredictor::LITE_POWER_RAND_LOW}};
   std::string upper_key;
+  upper_key.resize(cpu_mode.size());
   std::transform(cpu_mode.cbegin(), cpu_mode.cend(), upper_key.begin(),
-                 ::toupper);
+                 [](unsigned char c) { return std::toupper(c); });
   auto index = cpu_mode_map.find(upper_key.c_str());
   if (index == cpu_mode_map.end()) {
     LOGE("cpu_mode not found %s", upper_key.c_str());
-    return paddle::lite_api::LITE_POWER_HIGH;
+    return ppredictor::LITE_POWER_HIGH;
   } else {
     return index->second;
   }
