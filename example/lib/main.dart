@@ -4,7 +4,7 @@ import 'dart:ui' as ui show Image;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_paddleorc/flutter_paddleorc.dart';
+import 'package:flutter_paddleocr/flutter_paddleocr.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'mobile_bootstrap.dart'
@@ -16,7 +16,7 @@ class _App extends StatelessWidget {
   const _App();
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'flutter_paddleorc example',
+    title: 'flutter_paddleocr example',
     theme: ThemeData(
       colorSchemeSeed: const Color(0xFF3B85F5),
       useMaterial3: true,
@@ -121,7 +121,7 @@ class _HomePageState extends State<_HomePage> {
   Widget build(BuildContext context) {
     final canRun = _phase == _Phase.ready;
     return Scaffold(
-      appBar: AppBar(title: const Text('flutter_paddleorc')),
+      appBar: AppBar(title: const Text('flutter_paddleocr')),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,

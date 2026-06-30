@@ -1,6 +1,6 @@
 ## 0.0.1
 
-* Initial `flutter_paddleorc` release.
+* Initial `flutter_paddleocr` release.
 * Supports Android arm64-v8a, iOS arm64 devices, and Web through one Dart API.
 * Runs PP-OCRv5 mobile ONNX detection and recognition models on Android and iOS with ONNX Runtime.
 * Uses `paddleocr-js` for the Web backend.

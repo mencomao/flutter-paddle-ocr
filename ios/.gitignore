@@ -37,5 +37,5 @@ Icon?
 /Flutter/ephemeral/
 /Flutter/flutter_export_environment.sh
 
-# Fetched by ios/flutter_paddleorc.podspec#prepare_command on `pod install`.
+# Fetched by ios/flutter_paddleocr.podspec#prepare_command on `pod install`.
 /Frameworks/

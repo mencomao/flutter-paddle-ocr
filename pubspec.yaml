@@ -1,4 +1,4 @@
-name: flutter_paddleorc
+name: flutter_paddleocr
 description: "On-device OCR for Flutter, powered by PaddleOCR-compatible PP-OCR models, ONNX Runtime, and paddleocr-js."
 version: 0.0.1
 homepage: https://github.com/mencomao/flutter-paddle-ocr
