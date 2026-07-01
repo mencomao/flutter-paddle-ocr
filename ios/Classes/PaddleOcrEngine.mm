@@ -70,6 +70,7 @@ static cv::Mat GetRotateCropImage(const cv::Mat &srcimage,
   std::unique_ptr<RecPredictor> _rec;
   std::unique_ptr<ClsPredictor> _cls;
   std::vector<std::string> _dict;
+  BOOL _useDilation;
 }
 
 - (nullable instancetype)initWithDetPath:(NSString *)detPath
@@ -77,9 +78,12 @@ static cv::Mat GetRotateCropImage(const cv::Mat &srcimage,
                                 dictPath:(NSString *)dictPath
                                  clsPath:(nullable NSString *)clsPath
                                  threads:(int)threads
-                                powerMode:(NSString *)powerMode {
+                                powerMode:(NSString *)powerMode
+                             useSpaceChar:(BOOL)useSpaceChar
+                              useDilation:(BOOL)useDilation {
   if (!(self = [super init])) return nil;
   const std::string mode = powerMode.UTF8String;
+  _useDilation = useDilation;
   try {
     _det = std::make_unique<DetPredictor>(detPath.UTF8String, threads, mode);
     _rec = std::make_unique<RecPredictor>(recPath.UTF8String, threads, mode);
@@ -92,10 +96,12 @@ static cv::Mat GetRotateCropImage(const cv::Mat &srcimage,
   }
   _dict = ReadDict(dictPath.UTF8String);
   // CTC blank token: the recognizer emits index 0 for "no character", so the
-  // dictionary list is shifted by one and padded with a trailing space for the
-  // whitespace token. Matches upstream Pipeline::Pipeline in pipeline.cc.
+  // dictionary list is shifted by one. The optional trailing space matches
+  // PaddleOCR's use_space_char behavior.
   _dict.insert(_dict.begin(), "#");
-  _dict.push_back(" ");
+  if (useSpaceChar) {
+    _dict.push_back(" ");
+  }
   return self;
 }
 
@@ -115,7 +121,7 @@ static cv::Mat GetRotateCropImage(const cv::Mat &srcimage,
       {"det_db_thresh", 0.3},
       {"det_db_box_thresh", 0.6},
       {"det_db_unclip_ratio", 1.5},
-      {"det_db_use_dilate", 0},
+      {"det_db_use_dilate", _useDilation ? 1.0 : 0.0},
       {"det_use_polygon_score", 0},
       {"use_direction_classify", runCls ? 1.0 : 0.0},
   };

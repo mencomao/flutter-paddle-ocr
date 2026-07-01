@@ -14,7 +14,7 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_baidu_paddle_lite_demo_ocr_OCRPredictorNative_init(
     JNIEnv *env, jobject thiz, jstring j_det_model_path,
     jstring j_rec_model_path, jstring j_cls_model_path, jint j_use_opencl,
-    jint j_thread_num, jstring j_cpu_mode) {
+    jint j_thread_num, jstring j_cpu_mode, jint j_use_dilation) {
   std::string det_model_path = jstring_to_cpp_string(env, j_det_model_path);
   std::string rec_model_path = jstring_to_cpp_string(env, j_rec_model_path);
   std::string cls_model_path = jstring_to_cpp_string(env, j_cls_model_path);
@@ -23,6 +23,7 @@ Java_com_baidu_paddle_lite_demo_ocr_OCRPredictorNative_init(
   ppredictor::OCR_Config conf;
   conf.use_opencl = j_use_opencl;
   conf.thread_num = thread_num;
+  conf.use_dilation = j_use_dilation;
   conf.mode = str_to_cpu_mode(cpu_mode);
   ppredictor::OCR_PPredictor *orc_predictor =
       new ppredictor::OCR_PPredictor{conf};

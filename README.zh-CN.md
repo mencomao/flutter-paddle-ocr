@@ -84,7 +84,12 @@ Future<List<OcrResult>> recognizeImage(Uint8List imageBytes) async {
           dict: '/absolute/path/ppocr_keys_v5_utf8.txt',
         );
 
-  final ocr = await PaddleOcr.create(source: source, cpuThreadNum: 4);
+  final ocr = await PaddleOcr.create(
+    source: source,
+    cpuThreadNum: 4,
+    useSpaceChar: true,
+    useDilation: false,
+  );
 
   try {
     return await ocr.recognize(
@@ -106,6 +111,15 @@ Future<List<OcrResult>> recognizeImage(Uint8List imageBytes) async {
 - `confidence`：识别置信度
 - `points`：原图像素坐标系下的文本框多边形
 - `isUpsideDown` 和 `angleConfidence`：可选方向分类结果
+
+`PaddleOcr.create` 还为移动端后端暴露了两个 PaddleOCR 兼容的后处理开关：
+
+- `useSpaceChar`：是否在识别字典末尾追加普通空格。默认 `true`，保持插件之前的
+  行为，也符合 PaddleOCR 中文 OCR 常见配置。
+- `useDilation`：是否在 DB 检测 bitmap 提框前执行 2x2 膨胀。默认 `false`，保持
+  插件之前的行为。
+
+Web 端的模型加载和后处理仍由 `paddleocr-js` 管理。
 
 ## 移动端模型
 

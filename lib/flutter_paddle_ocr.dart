@@ -37,12 +37,16 @@ class PaddleOcr {
     int cpuThreadNum = 4,
     CpuPower cpuPower = CpuPower.high,
     bool useOpenCL = false,
+    bool useSpaceChar = true,
+    bool useDilation = false,
   }) async {
     final handle = await FlutterPaddleOcrPlatform.instance.create(
       source: source,
       cpuThreadNum: cpuThreadNum,
       cpuPower: cpuPower,
       useOpenCL: useOpenCL,
+      useSpaceChar: useSpaceChar,
+      useDilation: useDilation,
     );
     return PaddleOcr._(handle);
   }

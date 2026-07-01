@@ -27,6 +27,8 @@ class FlutterPaddleOcrWeb extends FlutterPaddleOcrPlatform {
     int cpuThreadNum = 4,
     CpuPower cpuPower = CpuPower.high,
     bool useOpenCL = false,
+    bool useSpaceChar = true,
+    bool useDilation = false,
   }) async {
     final bundled = switch (source) {
       BundledModelSource s => s,

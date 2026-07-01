@@ -302,6 +302,13 @@ OCR_PPredictor::calc_filtered_boxes(const float *pred, int pred_size,
   cv::Mat bit_map;
   cv::threshold(pred_map, bit_map, threshold, maxvalue, cv::THRESH_BINARY);
   bit_map.convertTo(bit_map, CV_8UC1);
+  if (_config.use_dilation == 1) {
+    cv::Mat dilation_map;
+    cv::Mat dila_ele =
+        cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2, 2));
+    cv::dilate(bit_map, dilation_map, dila_ele);
+    bit_map = dilation_map;
+  }
 
   std::vector<std::vector<std::vector<int>>> boxes =
       boxes_from_bitmap(pred_map, bit_map);

@@ -87,7 +87,12 @@ Future<List<OcrResult>> recognizeImage(Uint8List imageBytes) async {
           dict: '/absolute/path/ppocr_keys_v5_utf8.txt',
         );
 
-  final ocr = await PaddleOcr.create(source: source, cpuThreadNum: 4);
+  final ocr = await PaddleOcr.create(
+    source: source,
+    cpuThreadNum: 4,
+    useSpaceChar: true,
+    useDilation: false,
+  );
 
   try {
     return await ocr.recognize(
@@ -109,6 +114,17 @@ Each `OcrResult` contains:
 - `confidence`: recognition confidence
 - `points`: text polygon in source-image pixels
 - `isUpsideDown` and `angleConfidence`: optional angle-classifier result
+
+`PaddleOcr.create` also exposes two PaddleOCR-compatible postprocessing
+switches for mobile backends:
+
+- `useSpaceChar`: appends the normal space character to the recognition
+  dictionary. Defaults to `true`, matching the previous plugin behavior and
+  PaddleOCR's common Chinese OCR configuration.
+- `useDilation`: applies a 2x2 dilation to the DB detector bitmap before box
+  extraction. Defaults to `false`, matching the previous plugin behavior.
+
+On Web, model loading and postprocessing are delegated to `paddleocr-js`.
 
 ## Mobile Models
 

@@ -11,7 +11,9 @@ NS_ASSUME_NONNULL_BEGIN
                                 dictPath:(NSString *)dictPath
                                  clsPath:(nullable NSString *)clsPath
                                  threads:(int)threads
-                                powerMode:(NSString *)powerMode;
+                                powerMode:(NSString *)powerMode
+                             useSpaceChar:(BOOL)useSpaceChar
+                              useDilation:(BOOL)useDilation;
 
 /// Runs OCR on [imageData] (PNG/JPEG bytes). Returns an array of dicts with
 /// keys: text(String), confidence(NSNumber), points([[x,y]]), and — when

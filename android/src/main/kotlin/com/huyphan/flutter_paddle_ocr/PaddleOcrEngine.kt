@@ -14,9 +14,11 @@ internal class PaddleOcrEngine(
     cpuThreadNum: Int,
     cpuPower: String,
     useOpenCL: Int,
+    useSpaceChar: Boolean,
+    useDilation: Int,
 ) {
     private val native: OCRPredictorNative
-    private val wordLabels: List<String> = loadLabels(labelPath)
+    private val wordLabels: List<String> = loadLabels(labelPath, useSpaceChar)
 
     init {
         val config = OCRPredictorNative.Config().apply {
@@ -26,6 +28,7 @@ internal class PaddleOcrEngine(
             this.cpuThreadNum = cpuThreadNum
             this.cpuPower = cpuPower
             this.useOpencl = useOpenCL
+            this.useDilation = useDilation
         }
         native = OCRPredictorNative(config)
     }
@@ -56,6 +59,10 @@ internal class PaddleOcrEngine(
 
     // Leading "black" matches upstream PaddleOCR Predictor.java: the recognition CTC
     // output uses index 0 as the blank token, so the dictionary list is shifted by one.
-    private fun loadLabels(path: String): List<String> =
-        listOf("black") + File(path).readLines(StandardCharsets.UTF_8) + " "
+    private fun loadLabels(path: String, useSpaceChar: Boolean): List<String> {
+        val labels = mutableListOf("black")
+        labels.addAll(File(path).readLines(StandardCharsets.UTF_8))
+        if (useSpaceChar) labels.add(" ")
+        return labels
+    }
 }

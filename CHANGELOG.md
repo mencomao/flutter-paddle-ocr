@@ -1,3 +1,7 @@
+## 0.0.2
+
+* Exposes `useSpaceChar` and `useDilation` options on `PaddleOcr.create`.
+
 ## 0.0.1
 
 * Initial `flutter_paddle_ocr_v5` release.

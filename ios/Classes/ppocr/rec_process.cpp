@@ -95,7 +95,11 @@ RecPredictor::Postprocess(const cv::Mat &rgbaImage,
     if (argmax_idx > 0 && (!(n > 0 && argmax_idx == last_index))) {
       score += max_value;
       count += 1;
-      str_res += charactor_dict[argmax_idx];
+      if (argmax_idx < static_cast<int>(charactor_dict.size())) {
+        str_res += charactor_dict[argmax_idx];
+      } else {
+        str_res += "?";
+      }
     }
     last_index = argmax_idx;
   }

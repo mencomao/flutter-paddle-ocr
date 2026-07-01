@@ -55,6 +55,8 @@ class FlutterPaddleOcrPlugin : FlutterPlugin, MethodCallHandler {
         val cpuThreadNum = call.argument<Int>("cpuThreadNum") ?: 4
         val cpuPower = call.argument<String>("cpuPower") ?: "LITE_POWER_HIGH"
         val useOpenCL = call.argument<Boolean>("useOpenCL") == true
+        val useSpaceChar = call.argument<Boolean>("useSpaceChar") != false
+        val useDilation = call.argument<Boolean>("useDilation") == true
 
         requireFile(detPath, "detModelPath")
         requireFile(recPath, "recModelPath")
@@ -69,6 +71,8 @@ class FlutterPaddleOcrPlugin : FlutterPlugin, MethodCallHandler {
             cpuThreadNum = cpuThreadNum,
             cpuPower = cpuPower,
             useOpenCL = if (useOpenCL) 1 else 0,
+            useSpaceChar = useSpaceChar,
+            useDilation = if (useDilation) 1 else 0,
         )
         val id = nextId.getAndIncrement()
         instances[id] = engine

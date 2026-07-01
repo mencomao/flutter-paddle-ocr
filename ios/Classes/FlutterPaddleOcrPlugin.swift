@@ -53,6 +53,8 @@ public class FlutterPaddleOcrPlugin: NSObject, FlutterPlugin {
     let cls = args["clsModelPath"] as? String
     let threads = args["cpuThreadNum"] as? Int ?? 4
     let power = args["cpuPower"] as? String ?? "LITE_POWER_HIGH"
+    let useSpaceChar = (args["useSpaceChar"] as? Bool) ?? true
+    let useDilation = (args["useDilation"] as? Bool) ?? false
 
     for (name, path) in [("detModelPath", det), ("recModelPath", rec), ("labelPath", dict)] {
       if !FileManager.default.fileExists(atPath: path) {
@@ -66,7 +68,8 @@ public class FlutterPaddleOcrPlugin: NSObject, FlutterPlugin {
     guard let engine = PaddleOcrEngine(
       detPath: det, recPath: rec, dictPath: dict,
       clsPath: (cls?.isEmpty == false) ? cls : nil,
-      threads: Int32(threads), powerMode: power
+      threads: Int32(threads), powerMode: power,
+      useSpaceChar: useSpaceChar, useDilation: useDilation
     ) else {
       throw PluginError(code: "INIT", message: "PaddleOcrEngine failed to load models")
     }

@@ -26,6 +26,8 @@ abstract class FlutterPaddleOcrPlatform extends PlatformInterface {
     int cpuThreadNum = 4,
     CpuPower cpuPower = CpuPower.high,
     bool useOpenCL = false,
+    bool useSpaceChar = true,
+    bool useDilation = false,
   }) {
     throw UnimplementedError('create() has not been implemented.');
   }

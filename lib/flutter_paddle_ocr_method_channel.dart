@@ -15,6 +15,8 @@ class MethodChannelFlutterPaddleOcr extends FlutterPaddleOcrPlatform {
     int cpuThreadNum = 4,
     CpuPower cpuPower = CpuPower.high,
     bool useOpenCL = false,
+    bool useSpaceChar = true,
+    bool useDilation = false,
   }) async {
     final paths = switch (source) {
       FilePathsModelSource s => s,
@@ -32,6 +34,8 @@ class MethodChannelFlutterPaddleOcr extends FlutterPaddleOcrPlatform {
       _Channel.cpuThreadNum: cpuThreadNum,
       _Channel.cpuPower: cpuPower.value,
       _Channel.useOpenCL: useOpenCL,
+      _Channel.useSpaceChar: useSpaceChar,
+      _Channel.useDilation: useDilation,
     });
     return id!;
   }
@@ -86,6 +90,8 @@ abstract final class _Channel {
   static const cpuThreadNum = 'cpuThreadNum';
   static const cpuPower = 'cpuPower';
   static const useOpenCL = 'useOpenCL';
+  static const useSpaceChar = 'useSpaceChar';
+  static const useDilation = 'useDilation';
   static const instanceId = 'instanceId';
   static const imageBytes = 'imageBytes';
   static const maxSideLen = 'maxSideLen';

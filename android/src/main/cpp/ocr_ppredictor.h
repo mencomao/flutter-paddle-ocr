@@ -16,6 +16,7 @@ namespace ppredictor {
 struct OCR_Config {
   int use_opencl = 0;
   int thread_num = 4; // Thread num
+  int use_dilation = 0;
   CpuPowerMode mode = LITE_POWER_HIGH;
 };
 
