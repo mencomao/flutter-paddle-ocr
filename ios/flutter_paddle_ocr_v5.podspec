@@ -1,5 +1,5 @@
 Pod::Spec.new do |s|
-  s.name             = 'flutter_paddleocr'
+  s.name             = 'flutter_paddle_ocr_v5'
   s.version          = '0.0.1'
   s.summary          = 'On-device OCR for Flutter, powered by PaddleOCR-compatible PP-OCR models and ONNX Runtime.'
   s.description      = <<-DESC

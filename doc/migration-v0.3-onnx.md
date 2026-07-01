@@ -31,7 +31,7 @@ Same Dart public API. `ModelSource.filePaths` keeps working; the files are now `
 - `android/src/main/java/com/baidu/paddle/lite/demo/ocr/OCRPredictorNative.java` — keep the JNI surface shape (init/forward/release) so Kotlin doesn't change; reimplement the C++ side.
 
 **iOS**
-- `ios/flutter_paddleocr.podspec` — dropped Paddle Lite download/static lib; added `onnxruntime-c ~> 1.20.0` to preserve iOS 13 support. OpenCV is still downloaded by `prepare_command`.
+- `ios/flutter_paddle_ocr_v5.podspec` — dropped Paddle Lite download/static lib; added `onnxruntime-c ~> 1.20.0` to preserve iOS 13 support. OpenCV is still downloaded by `prepare_command`.
 - `ios/Classes/ppocr/ort_predictor.{h,cpp}` — new shared ORT C++ session wrapper.
 - `ios/Classes/ppocr/det_process.cpp`, `rec_process.cpp`, `cls_process.cpp` — Paddle Lite calls replaced with `OrtPredictor`; pre/postprocess kept and adjusted for PP-OCRv5 mobile rec height/det thresholds.
 

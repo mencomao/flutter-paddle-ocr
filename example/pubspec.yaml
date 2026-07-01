@@ -1,5 +1,5 @@
-name: flutter_paddleocr_example
-description: "Demonstrates how to use the flutter_paddleocr plugin."
+name: flutter_paddle_ocr_v5_example
+description: "Demonstrates how to use the flutter_paddle_ocr_v5 plugin."
 publish_to: 'none'
 
 environment:
@@ -9,7 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_paddleocr:
+  flutter_paddle_ocr_v5:
     path: ../
 
   cupertino_icons: ^1.0.8

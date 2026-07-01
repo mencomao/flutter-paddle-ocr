@@ -1,4 +1,4 @@
-import 'package:flutter_paddleocr/flutter_paddleocr.dart';
+import 'package:flutter_paddle_ocr_v5/flutter_paddle_ocr_v5.dart';
 
 /// Web build: paddleocr-js fetches its own models based on lang + version,
 /// so there's no filesystem work to do up-front.

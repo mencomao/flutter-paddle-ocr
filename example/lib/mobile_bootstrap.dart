@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:flutter_paddleocr/flutter_paddleocr.dart';
+import 'package:flutter_paddle_ocr_v5/flutter_paddle_ocr_v5.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
